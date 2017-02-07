@@ -1,18 +1,14 @@
-from autopilot import core
+from autopilot import pluginlib
 from autopilot.plugins.anycheck import anycheck
 
 
-from appkit import (
-    application,
-    cache,
-    cron
-)
+from appkit import cache
 
 
 import webbrowser
 
 
-class AnyCheckCallable(core.Callable):
+class Callable(pluginlib.Callable):
     __extension_name__ = 'anychecker.openwebapp'
 
     def call(self, *args, **kwargs):
@@ -22,9 +18,9 @@ class AnyCheckCallable(core.Callable):
         return "Open in a webbrowser http://www.any.do"
 
 
-class AnyCheckCronTask(core.AutopilotExtension, cron.CronTask):
+class Task(pluginlib.Task):
     __extension_name__ = 'anycheck'
-    interval = '4H'
+    INTERVAL = '4H'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -33,7 +29,7 @@ class AnyCheckCronTask(core.AutopilotExtension, cron.CronTask):
 
         if not u or not p:
             msg = "Please check username/password in your configuration"
-            raise application.ConfigurationError(msg)
+            raise pluginlib.ConfigurationError(msg)
 
         self.config = dict(username=u, password=p)
 
@@ -62,6 +58,6 @@ class AnyCheckCronTask(core.AutopilotExtension, cron.CronTask):
         )
 
 __autopilot_extensions__ = [
-    AnyCheckCallable,
-    AnyCheckCronTask
+    Callable,
+    Task
 ]

@@ -1,4 +1,4 @@
-git+https://github.com/ldotlopez/ldotcommons.git@appkit#egg=appkit
+-e git+https://github.com/ldotlopez/appkit.git#egg=appkit
 colorama
 
 # anychecker
