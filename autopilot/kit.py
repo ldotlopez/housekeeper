@@ -1,7 +1,8 @@
 from appkit import (
     application,
-    logging,
-    store
+    loggertools,
+    store,
+    types
 )
 from appkit.application import (
     cron,
@@ -16,7 +17,7 @@ import yaml
 class Extension(application.Extension):
     def __init__(self, settings, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = logging.getLogger(self.__class__.__extension_name__)
+        self.logger = loggertools.getLogger(self.__class__.__extension_name__)
         self.settings = settings
 
 
@@ -91,7 +92,7 @@ class YAMLStore(store.Store):
     def __init__(self, *args, logger=None, **kwargs):
         super().__init__(*args, **kwargs)
         if not logger:
-            logger = logging.NullLogger()
+            logger = types.NullSingleton()
 
         self.logger = logger
 

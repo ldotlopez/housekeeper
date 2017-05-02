@@ -1,11 +1,12 @@
 import abc
+import logging
 import os
 import sys
 
 from appkit import (
     application,
     cache,
-    logging,
+    loggertools,
     utils
 )
 from appkit.application import (
@@ -24,7 +25,7 @@ class Core(services.ApplicationMixin,
            application.BaseApplication):
     def __init__(self):
         # Initialize external modules
-        logging.setLevel(logging.Level.WARNING)
+        loggertools.setLevel(loggertools.Level.WARNING)
 
         pluginpath = os.path.dirname(os.path.realpath(__file__)) + "/plugins"
         super().__init__('autopilot', pluginpath=pluginpath)
@@ -66,9 +67,9 @@ class Core(services.ApplicationMixin,
                 msg = msg.format(level=cf_log_level)
                 self.logger.error(msg)
 
-        level = logging.getLevel()
+        level = loggertools.getLevel()
         diff = app_args.verbose - app_args.quiet
-        logging.setLevel(logging.Level.incr(level, n=diff))
+        loggertools.setLevel(loggertools.Level.incr(level, n=diff))
 
         # Initialize cache
         self.cache = cache.DiskCache(
