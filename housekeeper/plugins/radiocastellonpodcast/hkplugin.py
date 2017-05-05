@@ -1,5 +1,5 @@
 from . import rcpodcast
-from autopilot import pluginlib
+from housekeeper import pluginlib
 
 
 class RadioCastellonPodcastCommand(pluginlib.Command):

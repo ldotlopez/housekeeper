@@ -16,11 +16,11 @@ from appkit.application import (
     commands,
     services
 )
-from autopilot import kit
+from housekeeper import kit
 
 
 def user_path(*args, **kwargs):
-    kwargs['prog'] = 'autopilot'
+    kwargs['prog'] = 'housekeeper'
     return utils.user_path(*args, **kwargs)
 
 
@@ -31,7 +31,7 @@ class Core(services.ApplicationMixin,
         loggertools.setLevel(loggertools.Level.WARNING)
 
         pluginpath = os.path.dirname(os.path.realpath(__file__)) + "/plugins"
-        super().__init__('autopilot', pluginpath=pluginpath)
+        super().__init__('housekeeper', pluginpath=pluginpath)
 
         self.commands = commands.Manager(self)
         self.cron = kit.CronManager(
@@ -47,7 +47,7 @@ class Core(services.ApplicationMixin,
 
         # Read config files
         self.settings = kit.YAMLStore()
-        configfiles = [user_path(utils.UserPathType.CONFIG, 'autopilot.yml')]
+        configfiles = [user_path(utils.UserPathType.CONFIG, 'housekeeper.yml')]
         configfiles.extend(getattr(app_args, 'config-files', []))
         for cf in configfiles:
             try:

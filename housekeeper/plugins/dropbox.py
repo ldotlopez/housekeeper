@@ -35,7 +35,7 @@ class DropboxCommand(application.Command):
         print(repr(srv.dirs))
 
 
-__autopilot_extensions__ = [
+__housekeeper_extensions__ = [
     DropboxCommand,
     DropboxService
 ]

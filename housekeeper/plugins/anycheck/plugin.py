@@ -1,5 +1,5 @@
-from autopilot import pluginlib
-from autopilot.plugins.anycheck import anycheck
+from housekeeper import pluginlib
+from housekeeper.plugins.anycheck import anycheck
 
 
 from appkit import cache
@@ -57,7 +57,7 @@ class Task(pluginlib.Task):
             ]
         )
 
-__autopilot_extensions__ = [
+__housekeeper_extensions__ = [
     Callable,
     Task
 ]

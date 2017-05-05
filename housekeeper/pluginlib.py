@@ -1,6 +1,6 @@
 from appkit.utils import argument
 
-from autopilot.kit import (
+from housekeeper.kit import (
     APIEndPoint,
     Callable,
     Command,
@@ -23,14 +23,14 @@ __all__ = [
 #     cliargument
 # )
 
-# from autopilot.core import (
-#     AutopilotExtension,
+# from housekeeper.core import (
+#     HousekeeperExtension,
 #     Callable
 # )
 
 
 # __all__ = [
-#     'AutopilotExtension',
+#     'HousekeeperExtension',
 #     'Callable',
 #     'Command',
 #     'ConfigurationError',

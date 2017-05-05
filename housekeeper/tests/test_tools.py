@@ -1,6 +1,6 @@
 import unittest
 
-from autopilot.tools import (
+from housekeeper.tools import (
     list_in_list,
     pathname_replace,
     pathname_split,

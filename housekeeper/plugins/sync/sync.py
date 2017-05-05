@@ -4,7 +4,7 @@ import tempfile
 from os import path
 
 from appkit import utils as kitutils
-from autopilot import tools
+from housekeeper import tools
 
 _registry = {}
 

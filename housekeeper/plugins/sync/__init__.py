@@ -1,5 +1,5 @@
 from .plugin import Task
 
-__autopilot_extensions__ = [
+__housekeeper_extensions__ = [
     Task
 ]

@@ -1,4 +1,4 @@
-from autopilot import pluginlib
+from housekeeper import pluginlib
 
 
 import os
@@ -149,7 +149,7 @@ class Shutdown(PowerControl):
     HELP = 'shutdown remote stuff'
 
 
-__autopilot_extensions__ = [
+__housekeeper_extensions__ = [
     Poweroff,
     Shutdown,
     Reboot

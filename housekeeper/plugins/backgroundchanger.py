@@ -1,4 +1,4 @@
-from autopilot import pluginlib
+from housekeeper import pluginlib
 
 
 import os
@@ -151,7 +151,7 @@ class Command(pluginlib.Command):
         logger.info(msg)
 
 
-__autopilot_extensions__ = [
+__housekeeper_extensions__ = [
     Command,
     Task
 ]

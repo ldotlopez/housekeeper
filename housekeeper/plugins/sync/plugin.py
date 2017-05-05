@@ -1,6 +1,6 @@
-from autopilot import pluginlib
-from autopilot import tools
-from autopilot.plugins.sync import sync
+from housekeeper import pluginlib
+from housekeeper import tools
+from housekeeper.plugins.sync import sync
 
 
 class Task(pluginlib.Task):

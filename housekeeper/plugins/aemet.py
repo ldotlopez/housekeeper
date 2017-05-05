@@ -1,4 +1,4 @@
-from autopilot import pluginlib
+from housekeeper import pluginlib
 
 
 from appkit import application, network
@@ -58,7 +58,7 @@ class AemetCommand(pluginlib.Command):
         print(repr(arguments))
 
 
-__autopilot_extensions__ = [
+__housekeeper_extensions__ = [
     AemetCommand,
     AemetEndPoint
 ]
