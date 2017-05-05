@@ -1,13 +1,14 @@
 from appkit.utils import argument
 
 from autopilot.kit import (
-    Extension,
+	APIEndPoint,
     Callable,
     Command,
     Task
 )
 
 __all__ = [
+	'APIEndPoint',
     'Callable',
     'Command',
     'Task',

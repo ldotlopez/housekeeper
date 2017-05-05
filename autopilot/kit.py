@@ -21,6 +21,12 @@ class Extension(application.Extension):
         self.settings = settings
 
 
+class APIEndPoint(Extension):
+    ROUTE = None
+    def execute(self, *args, **kwargs):
+        return {}
+
+
 class Callable(Extension):
     @abc.abstractmethod
     def call(self, *args, **kwargs):

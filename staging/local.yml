@@ -1,0 +1,64 @@
+plugins.sync:
+  enabled: True
+
+
+units:
+  personal-tg:
+    - humanizer
+    - unit: telegram
+      api_key: xxxx
+      api_secret: xxxx
+
+  weather:
+    - aemet
+    - personal-tg
+
+on:
+  timer:
+  - foo
+  - unit: bar
+    when:
+      time: "* * * */2"
+
+  - unit: other
+    when:
+      after: "3M"
+
+  logon:
+    - check-for-print
+
+
+
+syncs:
+  - source: ~/Music/
+    destination: ~/Sync/Moble/Music/
+    hardlink: True
+    generator:
+      name: banshee
+      playlist: Mobile
+    exclude:
+      - .sync
+      - .nomedia
+
+  - source: ~/Images/Photos/
+    destination: ~/Sync/Mobile/Favs/
+    hardlink: True
+    generator:
+      name: shotwell
+      score: 4
+
+  - source: /srv/media/Photos
+    destination: "/srv/media/Photos (Eva)"
+    hardlink: True
+    generator:
+      name: filesystem
+      directory: /srv/media/Photos 
+
+archives:
+  - source: "~/Sync/WhatsApp Media"
+    destination: "~/Sync/WhatsApp Media (Archive)"
+    delta: "28d"
+    generator:
+      name: filesystem
+      filters:
+      - btsync
