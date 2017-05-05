@@ -23,6 +23,7 @@ class Extension(application.Extension):
 
 class APIEndPoint(Extension):
     ROUTE = None
+
     def execute(self, *args, **kwargs):
         return {}
 
