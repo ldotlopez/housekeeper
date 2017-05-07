@@ -69,8 +69,8 @@ class Task(cron.Task, Extension):
 class CronManager(cron.Manager):
     COMMAND_EXTENSION_CLASS = Command
 
-    def __init__(self, *args, state_file, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, core, state_file, *args, **kwargs):
+        super().__init__(core, *args, **kwargs)
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
         self.state_file = state_file
 

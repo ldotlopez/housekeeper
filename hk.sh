@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/bin/bash
 
 # Copyright (C) 2015 Luis López <luis@cuarentaydos.com>
 #
@@ -19,10 +18,19 @@
 # USA.
 
 
-from housekeeper import core
 
-if __name__ == '__main__':
-    core = core.Core()
-    core.load_plugin('archiver')
-    core.load_plugin('backgroundchanger')
-    core.execute_from_command_line()
+D="$(dirname -- "$0")"
+if [ "${D:0:1}" != "/" ]; then
+		D="$PWD/$D"
+fi
+
+if [ -z "$VIRTUAL_ENV" ]; then 
+	source "$D/env/bin/activate" 2>/dev/null || {
+		echo "expected virtual environment in '$D/env' not found"
+		exit 1
+	}
+fi
+
+PYTHONPATH="$D" python3 -m "housekeeper" \
+	--config-file "$D/housekeeper.yml" \
+	"$@" 

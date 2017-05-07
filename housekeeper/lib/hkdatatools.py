@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2015 Luis López <luis@cuarentaydos.com>
@@ -19,10 +18,32 @@
 # USA.
 
 
-from housekeeper import core
+import collections
 
-if __name__ == '__main__':
-    core = core.Core()
-    core.load_plugin('archiver')
-    core.load_plugin('backgroundchanger')
-    core.execute_from_command_line()
+
+def list_in_list(needle, stack):
+    if needle == stack:
+        return 0
+
+    if not needle:
+        return 0
+
+    if not stack:
+        return -1
+
+    if len(needle) > len(stack):
+        return -1
+
+    needle_len = len(needle)
+    for stack_idx in range(0, len(stack) - needle_len + 1):
+        if stack[stack_idx:stack_idx+needle_len] == needle:
+            return stack_idx
+
+    return -1
+
+
+def walk_collection(collection):
+    if isinstance(collection, collections.Mapping):
+        yield from ((k, v) for (k, v) in collection.items())
+    else:
+        yield from enumerate(collection)

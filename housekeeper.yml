@@ -1,0 +1,20 @@
+# Proposal for "tasklets" or user defined crontask
+#
+# tasks:
+#     archive whatsapp:
+#       app: archive
+#       source: "~/Sync/WhatsApp Media"
+#       destination: "~/Sync/WhatsApp Media (Archive)"
+#       delta: 4w 
+#
+# cron:
+#   - task: archive whatsapp
+#     frequency: 1d
+
+
+# archive plugin config example
+# archive:
+#   - source: "~/Sync/WhatsApp Media"
+#     destination: "~/Sync/WhatsApp Media (Archive)"
+#     delta: 4w
+#     dry_run: False
