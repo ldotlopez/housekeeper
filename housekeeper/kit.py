@@ -130,6 +130,6 @@ class YAMLStore(store.Store):
     def load(self, stream):
         buff = stream.read()
         data = yaml.load(buff)
-        data = store.flatten_dict(data)
+        data = store.flatten_dict(data or {})
         for (k, v) in data.items():
             self.set(k, v)
