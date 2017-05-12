@@ -22,7 +22,9 @@ from appkit.utils import argument
 
 
 from housekeeper.kit import (
+    APIEndpoint,
     Applet,
+    AppletAPIEndpointMixin,
     AppletCommandMixin,
     AppletTaskMixin,
     Callable,
@@ -33,7 +35,9 @@ from housekeeper.kit import (
 
 
 __all__ = [
+    'APIEndpoint',
     'Applet',
+    'AppletAPIEndpointMixin',
     'AppletCommandMixin',
     'AppletTaskMixin',
     'Callable',

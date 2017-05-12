@@ -80,16 +80,11 @@ class API(falcon.API):
         ])
 
         self.core = core.Core()
-        self.core.register_extension_point(kit.APIEndPoint)
-        self.core.load_plugin('aemet')
-
-        for (name, ext) in self.core.get_extensions_for(kit.APIEndPoint):
-            route = ext.ROUTE or '/'
-            route = '/{name}/{route}'.format(name=name, route=route)
-            route = re.subn(r'/+', '/', route)[0]
-            print("Map {} to {}".format(route, ext))
-            self.add_route(route, ext)
-
+        self.core.register_extension_point(kit.APIEndpoint)
+        self.core.load_plugin('music')
+        for (name, ext) in self.core.get_extensions_for(kit.APIEndpoint):
+            print(name, ext)
+            print()
 
 #   http://www.aemet.es/xml/municipios/localidad_12040.xml
 

@@ -20,7 +20,6 @@
 
 from appkit import (
     application,
-    loggertools,
     store,
     types
 )
@@ -63,10 +62,9 @@ class Parameter:
 
 
 class Extension(application.Extension):
-    def __init__(self, settings, *args, **kwargs):
+    def __init__(self, services, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = loggertools.getLogger(self.__class__.__extension_name__)
-        self.settings = settings
+        self.srvs = services
 
 
 class Applet:
@@ -76,11 +74,36 @@ class Applet:
     CHILDREN = ()
     PARAMETERS = ()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.children = {}
+        self._parent = None
+
         for (name, child_cls) in self.CHILDREN:
-            child = child_cls(*args, **kwargs)
-            self.children[name] = child
+            self.children[name] = self.create_child(name, child_cls)
+
+    def create_child(self, name, child_cls):
+        child = child_cls()
+        child._parent = self
+        return child
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def root(self):
+        root = self.parent
+        if not root:
+            return self
+
+        while root.parent:
+            root = root.parent
+
+        return root
+
+    # @property
+    # def srvs(self):
+    #     return self.root.srvs
 
     def main(self, **parameters):
         raise NotImplementedError()
@@ -148,6 +171,14 @@ class Task(cron.Task, Extension):
 class AppletTaskMixin(Task):
     def execute(self, core):
         self.main()
+
+
+class APIEndpoint(Extension):
+    pass
+
+
+class AppletAPIEndpointMixin(APIEndpoint):
+    pass
 
 
 class CronManager(cron.Manager):
