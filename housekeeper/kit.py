@@ -30,8 +30,36 @@ from appkit.application import (
 )
 
 import abc
+import copy
+import functools
 import os
+import re
 import yaml
+
+
+class Parameter:
+    def __init__(self, name, abbr=None, **kwargs):
+        if not re.match(r'^[a-z0-9-_]+$', name, re.IGNORECASE):
+            raise ValueError(name)
+
+        if abbr and len(abbr) != 1:
+            msg = "abbr must be a single letter"
+            raise ValueError(abbr, msg)
+
+        self.name = str(name).replace('-', '_')
+        self.abbr = str(abbr) if abbr else None
+        self.kwargs = copy.copy(kwargs)
+
+    @property
+    def short_flag(self):
+        if not self.abbr:
+            return None
+
+        return '-' + self.abbr
+
+    @property
+    def long_flag(self):
+        return '--' + self.name.replace('_', '-')
 
 
 class Extension(application.Extension):
@@ -39,6 +67,24 @@ class Extension(application.Extension):
         super().__init__(*args, **kwargs)
         self.logger = loggertools.getLogger(self.__class__.__extension_name__)
         self.settings = settings
+
+
+class Applet:
+    # FIXME: Rebase Applet onto Extension
+
+    HELP = ""
+    CHILDREN = ()
+    PARAMETERS = ()
+
+    def __init__(self, *args, **kwargs):
+        self.children = {}
+        for (name, child_cls) in self.CHILDREN:
+            child = child_cls(*args, **kwargs)
+            self.children[name] = child
+
+    def main(self, **parameters):
+        raise NotImplementedError()
+
 
 class Callable(Extension):
     @abc.abstractmethod
@@ -54,8 +100,54 @@ class Command(commands.Command, Extension):
     pass
 
 
+class AppletCommandMixin(Command):
+    def _applet_setup_argparser(self, applet, parser):
+        # Add subparsers for children
+        if applet.children:
+            chidren_parsers = parser.add_subparsers(dest='child')
+
+            for (name, child) in applet.children.items():
+                child_parser = chidren_parsers.add_parser(name)
+                self._applet_setup_argparser(child, child_parser)
+
+        for param in applet.PARAMETERS:
+            fn = parser.add_argument
+
+            if param.short_flag:
+                fn = functools.partial(fn, param.short_flag)
+
+            fn = functools.partial(fn, param.long_flag)
+            fn(**param.kwargs)
+
+    def _applet_execute(self, applet, core, arguments):
+        child = arguments.child
+        if child and child in applet.children:
+            return self._applet_execute(applet.children[child], core,
+                                        arguments)
+
+        parameters = {}
+        for param in applet.PARAMETERS:
+            try:
+                parameters[param.name] = getattr(arguments, param.name)
+            except AttributeError:
+                pass
+
+        return applet.main(**parameters)
+
+    def setup_argparser(self, parser):
+        self._applet_setup_argparser(self, parser)
+
+    def execute(self, core, arguments):
+        return self._applet_execute(self, core, arguments)
+
+
 class Task(cron.Task, Extension):
     pass
+
+
+class AppletTaskMixin(Task):
+    def execute(self, core):
+        self.main()
 
 
 class CronManager(cron.Manager):

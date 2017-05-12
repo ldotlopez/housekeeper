@@ -20,15 +20,25 @@
 
 from appkit.utils import argument
 
+
 from housekeeper.kit import (
+    Applet,
+    AppletCommandMixin,
+    AppletTaskMixin,
     Callable,
     Command,
+    Parameter,
     Task
 )
 
+
 __all__ = [
+    'Applet',
+    'AppletCommandMixin',
+    'AppletTaskMixin',
     'Callable',
     'Command',
+    'Parameter',
     'Task',
     'argument'
 ]
