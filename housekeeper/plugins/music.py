@@ -33,10 +33,6 @@ class MusicPlay(pluginlib.Applet):
         pluginlib.Parameter('type', abbr='t', type=str)
     )
 
-    def __init__(self, appbridge, *args, **kwargs):
-        self.appbridge = appbridge
-        super().__init__(*args, **kwargs)
-
     def main(self, **kwargs):
         print(repr(self.root.srvs))
         # Call /usr/bin/media-player play 'what'
@@ -71,25 +67,22 @@ class Music(pluginlib.Applet):
         ('stop', MusicStop),
     )
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Link to music player
         # appbridge_settings = services.settings.get('music')
         # self.appbridge = MusicAppBridge(**appbridge_settings)
         self.appbridge = object()
-        super().__init__()
-
-    def create_child(self, name, cls, *args, **kwargs):
-        return cls(self.appbridge, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def main(self, foo=None):
-        print('Hi! (foo={})'.format(foo))
+        return 'Hi! (foo={})'.format(foo)
 
 
-class MusicAPI(Music, pluginlib.APIEndpoint):
+class MusicAPI(pluginlib.APIEndpoint, Music):
     __extension_name__ = 'music'
 
 
-class MusicCommand(Music, pluginlib.AppletCommandMixin):
+class MusicCommand(pluginlib.AppletCommandMixin, Music):
     __extension_name__ = 'music'
 
 

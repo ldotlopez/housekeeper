@@ -19,6 +19,7 @@
 
 
 from housekeeper import core, kit
+from housekeeper.lib import hkfilesystem
 import falcon
 import re
 import json
@@ -72,6 +73,27 @@ class JSONTranslator(object):
         resp.body = json.dumps(resp.context['result'])
 
 
+class Adapter:
+    def __init__(self, applet):
+        self.applet = applet
+
+    def on_get(self, req, resp):
+        try:
+            resp.context['result'] = {
+                'result': self.applet.main(**req.params)
+            }
+            resp.status = falcon.HTTP_200
+
+        except SyntaxError:
+            raise
+
+        except Exception as e:
+            resp.context['result'] = {
+                'error': str(e)
+            }
+            resp.status = falcon.HTTP_500
+
+
 class API(falcon.API):
     def __init__(self):
         super().__init__(middleware=[
@@ -83,10 +105,17 @@ class API(falcon.API):
         self.core.register_extension_point(kit.APIEndpoint)
         self.core.load_plugin('music')
         for (name, ext) in self.core.get_extensions_for(kit.APIEndpoint):
+            if not isinstance(ext, kit.Applet):
+                continue
+
+            self.add_applet(name, ext)
             print(name, ext)
-            print()
 
-#   http://www.aemet.es/xml/municipios/localidad_12040.xml
+    def add_applet(self, name, applet):
+        path = '/' + name + '/'
+        self.add_route(path, Adapter(applet))
 
+        for (name_, child) in applet.children.items():
+            self.add_applet(name + '/' + name_, child)
 
 app = API()

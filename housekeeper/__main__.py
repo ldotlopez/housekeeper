@@ -24,5 +24,5 @@ from housekeeper import core
 if __name__ == '__main__':
     core = core.Core()
     core.load_plugin('archiver')
-    core.load_plugin('backgroundchanger')
+    core.load_plugin('music')
     core.execute_from_command_line()

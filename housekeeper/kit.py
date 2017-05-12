@@ -74,7 +74,9 @@ class Applet:
     CHILDREN = ()
     PARAMETERS = ()
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         self.children = {}
         self._parent = None
 
@@ -124,6 +126,9 @@ class Command(commands.Command, Extension):
 
 
 class AppletCommandMixin(Command):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def _applet_setup_argparser(self, applet, parser):
         # Add subparsers for children
         if applet.children:
@@ -175,7 +180,6 @@ class AppletTaskMixin(Task):
 
 class APIEndpoint(Extension):
     pass
-
 
 class AppletAPIEndpointMixin(APIEndpoint):
     pass
