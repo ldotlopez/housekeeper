@@ -21,10 +21,7 @@
 from housekeeper import pluginlib
 
 
-from appkit import application, network
-
-
-import falcon
+from appkit import application
 
 
 class AemetAPI:
@@ -50,22 +47,6 @@ class AemetAPI:
             raise ValueError(key)
 
 
-
-class AemetEndPoint(pluginlib.APIEndPoint):
-    __extension_name__ = 'aemet'
-
-    def on_get(self, req, resp):
-        when = req.params.get('when') or 'today'
-
-        api = AemetAPI(location=12040)
-        api.get('rain.tomorrow')
-
-        resp.status = falcon.HTTP_200
-        resp.context['result'] = {
-            'url': api.xml_url
-        }
-
-
 class AemetCommand(pluginlib.Command):
     HELP = 'aemet'
     ARGUMENTS = (
@@ -80,7 +61,6 @@ class AemetCommand(pluginlib.Command):
 
 __housekeeper_extensions__ = [
     AemetCommand,
-    AemetEndPoint
 ]
 
 

@@ -40,14 +40,6 @@ class Extension(application.Extension):
         self.logger = loggertools.getLogger(self.__class__.__extension_name__)
         self.settings = settings
 
-
-class APIEndPoint(Extension):
-    ROUTE = None
-
-    def execute(self, *args, **kwargs):
-        return {}
-
-
 class Callable(Extension):
     @abc.abstractmethod
     def call(self, *args, **kwargs):
