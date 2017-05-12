@@ -18,9 +18,11 @@
 # USA.
 
 
+import collections
 import logging
 import os
 import sys
+
 
 from appkit import (
     application,
@@ -32,12 +34,17 @@ from appkit.application import (
     commands,
     services
 )
+
+
 from housekeeper import kit
 
 
 def user_path(*args, **kwargs):
     kwargs['prog'] = 'housekeeper'
     return utils.user_path(*args, **kwargs)
+
+
+CoreServices = collections.namedtuple('CoreServices', ['settings', 'logger'])
 
 
 class Core(services.ApplicationMixin,
@@ -54,6 +61,7 @@ class Core(services.ApplicationMixin,
             self,
             state_file=user_path(utils.UserPathType.DATA, 'state.json'))
 
+        self.register_extension_point(kit.APIEndpoint)
         self.register_extension_point(kit.Callable)
         self.register_extension_class(kit.CronCommand)
 
@@ -102,10 +110,15 @@ class Core(services.ApplicationMixin,
             name,
             repr(args),
             repr(kwargs))
-        self.logger.debug(msg)
+        self.logger.warning(msg)
 
-        return super().get_extension(extension_point, name, self.settings,
-                                     *args, **kwargs)
+        services = CoreServices(
+            settings=self.settings,
+            logger=self.logger.getChild(extension_point.__name__ + '::' + name)
+        )
+
+        return super().get_extension(extension_point, name,
+                                     services, *args, **kwargs)
 
     def notify(self, summary, body=None, asset=None, actions=None):
         print("*{}*".format(summary))
