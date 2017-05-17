@@ -18,6 +18,15 @@
 # USA.
 
 
+import abc
+import copy
+import functools
+import os
+import re
+
+
+import falcon
+import yaml
 from appkit import (
     application,
     store,
@@ -27,13 +36,6 @@ from appkit.application import (
     cron,
     commands
 )
-
-import abc
-import copy
-import functools
-import os
-import re
-import yaml
 
 
 class Parameter:
@@ -126,9 +128,6 @@ class Command(commands.Command, Extension):
 
 
 class AppletCommandMixin(Command):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def _applet_setup_argparser(self, applet, parser):
         # Add subparsers for children
         if applet.children:
@@ -179,10 +178,29 @@ class AppletTaskMixin(Task):
 
 
 class APIEndpoint(Extension):
+    # Must implement on_HTTP_METHOD
     pass
 
+
 class AppletAPIEndpointMixin(APIEndpoint):
-    pass
+    def _run_main(self, **params):
+        try:
+            return (
+                falcon.HTTP_200,
+                {'result': self.main(**params)}
+            )
+
+        except SyntaxError:
+            raise
+
+        except Exception as e:
+            return falcon.HTTP_500, {'error': str(e) }
+
+    def on_get(self, req, resp):
+        resp.status, resp.context['result'] = self._run_main()
+
+    def on_post(self, req, resp):
+        resp.status, resp.context['result'] = self._run_main(req.params)
 
 
 class CronManager(cron.Manager):

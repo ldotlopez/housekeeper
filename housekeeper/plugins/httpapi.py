@@ -18,30 +18,18 @@
 # USA.
 
 
-from housekeeper import core, kit
-from housekeeper.lib import hkfilesystem
-import falcon
-import re
+from housekeeper import pluginlib
+
+
 import json
+import multiprocessing
 
 
-class RequireJSON(object):
-
-    def process_request(self, req, resp):
-        if not req.client_accepts_json:
-            raise falcon.HTTPNotAcceptable(
-                'This API only supports responses encoded as JSON.',
-                href='http://docs.examples.com/api/json')
-
-        if req.method in ('POST', 'PUT'):
-            if 'application/json' not in req.content_type:
-                raise falcon.HTTPUnsupportedMediaType(
-                    'This API only supports requests encoded as JSON.',
-                    href='http://docs.examples.com/api/json')
+import falcon
+import gunicorn.app.base
 
 
 class JSONTranslator(object):
-
     def process_request(self, req, resp):
         # req.stream corresponds to the WSGI wsgi.input environ variable,
         # and allows you to read bytes from the request body.
@@ -73,23 +61,26 @@ class JSONTranslator(object):
         resp.body = json.dumps(resp.context['result'])
 
 
+class RequireJSON(object):
+    def process_request(self, req, resp):
+        if not req.client_accepts_json:
+            raise falcon.HTTPNotAcceptable(
+                'This API only supports responses encoded as JSON.',
+                href='http://docs.examples.com/api/json')
+
+        if req.method in ('POST', 'PUT'):
+            if 'application/json' not in req.content_type:
+                raise falcon.HTTPUnsupportedMediaType(
+                    'This API only supports requests encoded as JSON.',
+                    href='http://docs.examples.com/api/json')
 
 
+class APIServer(falcon.API):
+    def __init__(self, app, *args, **kwargs):
+        middleware = [RequireJSON(), JSONTranslator()]
+        super().__init__(*args, middleware=middleware, **kwargs)
 
-class API(falcon.API):
-    def __init__(self):
-        super().__init__(middleware=[
-            RequireJSON(),
-            JSONTranslator(),
-        ])
-
-        self.core = core.Core()
-        self.core.register_extension_point(kit.APIEndpoint)
-        self.core.load_plugin('music')
-        for (name, ext) in self.core.get_extensions_for(kit.APIEndpoint):
-            if not isinstance(ext, kit.Applet):
-                continue
-
+        for (name, ext) in app.get_extensions_for(pluginlib.APIEndpoint):    
             self.add_extension(name, ext)
             print(name, ext)
 
@@ -97,7 +88,45 @@ class API(falcon.API):
         path = '/' + name + '/'
         self.add_route(path, ext)
 
-        for (name_, child) in applet.children.items():
-            self.add_applet(name + '/' + name_, child)
+        if not isinstance(ext, pluginlib.Applet):
+            return
 
-app = API()
+        for (name_, child) in ext.children.items():
+            self.add_extension(name + '/' + name_, child)
+
+
+class HttpServer(gunicorn.app.base.BaseApplication):
+    def __init__(self, app, options=None):
+        self.options = options or {}
+        self.application = app
+        super().__init__()
+
+    def load_config(self):
+        config = dict([
+            (key, value) for key, value in self.options.items()
+            if key in self.cfg.settings and value is not None
+        ])
+
+        for key, value in config.items():
+            self.cfg.set(key.lower(), value)
+
+    def load(self):
+        return self.application
+
+
+class APIServerCommand(pluginlib.Command):
+    __extension_name__ = 'httpapi'
+    HELP = 'Start HTTP API server'
+
+    def execute(self, app, arguments):
+        options = {
+            'bind': '127.0.0.1:8000',
+            'workers': (multiprocessing.cpu_count() * 2) + 1
+        }
+        server = HttpServer(APIServer(app), options)
+        server.run()
+
+
+__housekeeper_extensions__ = [
+    APIServerCommand
+]

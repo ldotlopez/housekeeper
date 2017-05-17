@@ -71,14 +71,14 @@ class Music(pluginlib.Applet):
         # Link to music player
         # appbridge_settings = services.settings.get('music')
         # self.appbridge = MusicAppBridge(**appbridge_settings)
-        self.appbridge = object()
         super().__init__(*args, **kwargs)
+        self.appbridge = object()
 
     def main(self, foo=None):
         return 'Hi! (foo={})'.format(foo)
 
 
-class MusicAPI(pluginlib.APIEndpoint, Music):
+class MusicAPI(pluginlib.AppletAPIEndpointMixin, Music):
     __extension_name__ = 'music'
 
 

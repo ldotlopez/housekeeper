@@ -62,6 +62,7 @@ class Core(services.ApplicationMixin,
             state_file=user_path(utils.UserPathType.DATA, 'state.json'))
 
         self.register_extension_point(kit.Callable)
+        self.register_extension_point(kit.APIEndpoint)
         self.register_extension_class(kit.CronCommand)
 
         # Read command line
