@@ -18,8 +18,10 @@
 # USA.
 
 
-from housekeeper import pluginlib
-
+from housekeeper import (
+    kit,
+    pluginlib
+)
 
 import json
 import multiprocessing
@@ -80,16 +82,13 @@ class APIServer(falcon.API):
         middleware = [RequireJSON(), JSONTranslator()]
         super().__init__(*args, middleware=middleware, **kwargs)
 
-        for (name, ext) in app.get_extensions_for(pluginlib.APIEndpoint):    
+        for (name, ext) in app.get_extensions_for(kit.APIEndpoint):
             self.add_extension(name, ext)
-            print(name, ext)
 
     def add_extension(self, name, ext):
         path = '/' + name + '/'
         self.add_route(path, ext)
-
-        if not isinstance(ext, pluginlib.Applet):
-            return
+        print("+ {} {}".format(path, ext))
 
         for (name_, child) in ext.children.items():
             self.add_extension(name + '/' + name_, child)
@@ -114,14 +113,17 @@ class HttpServer(gunicorn.app.base.BaseApplication):
         return self.application
 
 
-class APIServerCommand(pluginlib.Command):
+class APIServerCommand(kit.Command):
     __extension_name__ = 'httpapi'
     HELP = 'Start HTTP API server'
 
     def execute(self, app, arguments):
         options = {
             'bind': '127.0.0.1:8000',
-            'workers': (multiprocessing.cpu_count() * 2) + 1
+            'workers': (multiprocessing.cpu_count() * 2) + 1,
+            'proc_name': 'housekeeper-api',
+            'reload': True,
+            'loglevel': 'debug'
         }
         server = HttpServer(APIServer(app), options)
         server.run()
