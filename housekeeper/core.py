@@ -56,12 +56,11 @@ class Core(services.ApplicationMixin,
         pluginpath = os.path.dirname(os.path.realpath(__file__)) + "/plugins"
         super().__init__('housekeeper', pluginpath=pluginpath)
 
-        self.commands = commands.Manager(self)
+        self.commands = kit.CommandManager(self)
         self.cron = kit.CronManager(
             self,
             state_file=user_path(utils.UserPathType.DATA, 'state.json'))
 
-        self.register_extension_point(kit.Callable)
         self.register_extension_point(kit.APIEndpoint)
         self.register_extension_class(kit.CronCommand)
 
@@ -110,15 +109,17 @@ class Core(services.ApplicationMixin,
             name,
             repr(args),
             repr(kwargs))
-        self.logger.warning(msg)
+        self.logger.debug(msg)
 
-        services = CoreServices(
-            settings=self.settings,
-            logger=self.logger.getChild(extension_point.__name__ + '::' + name)
-        )
+        cls = self._get_extension_class(extension_point, name)
+        if issubclass(cls, kit.Applet):
+            services = CoreServices(
+                settings=self.settings,
+                logger=self.logger.getChild(extension_point.__name__ + '::' + name)
+            )
+            args = (services,) + tuple(args)
 
-        return super().get_extension(extension_point, name,
-                                     services, *args, **kwargs)
+        return super().get_extension(extension_point, name, *args, **kwargs)
 
     def notify(self, summary, body=None, asset=None, actions=None):
         print("*{}*".format(summary))

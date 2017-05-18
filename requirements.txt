@@ -1,5 +1,5 @@
 appdirs==1.4.3
--e git+https://github.com/ldotlopez/appkit.git@73c9945e32796ca8707de8870cf6aee400aaa132#egg=appkit
+-e git+https://github.com/ldotlopez/appkit.git@hk#egg=appkit
 colorama==0.3.9
 packaging==16.8
 pkg-resources==0.0.0

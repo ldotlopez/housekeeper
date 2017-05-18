@@ -18,7 +18,6 @@
 # USA.
 
 
-import abc
 import copy
 import functools
 import os
@@ -36,6 +35,13 @@ from appkit.application import (
     cron,
     commands
 )
+
+
+Command = commands.Command
+CommandManager = commands.Manager
+
+Task = cron.Task
+CronCommand = cron.Command
 
 
 class Parameter:
@@ -63,71 +69,42 @@ class Parameter:
         return '--' + self.name.replace('_', '-')
 
 
-class Extension(application.Extension):
-    def __init__(self, services, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.srvs = services
 
+class APIEndpoint(application.Extension):
+    """
+    Expose API functionality.
 
-class Applet:
-    # FIXME: Rebase Applet onto Extension
-
-    HELP = ""
-    CHILDREN = ()
-    PARAMETERS = ()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.children = {}
-        self._parent = None
-
-        for (name, child_cls) in self.CHILDREN:
-            self.children[name] = self.create_child(name, child_cls)
-
-    def create_child(self, name, child_cls):
-        child = child_cls()
-        child._parent = self
-        return child
-
-    @property
-    def parent(self):
-        return self._parent
-
-    @property
-    def root(self):
-        root = self.parent
-        if not root:
-            return self
-
-        while root.parent:
-            root = root.parent
-
-        return root
-
-    # @property
-    # def srvs(self):
-    #     return self.root.srvs
-
-    def main(self, **parameters):
-        raise NotImplementedError()
-
-
-class Callable(Extension):
-    @abc.abstractmethod
-    def call(self, *args, **kwargs):
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def stringify(self, *args, **kwargs):
-        raise NotImplementedError()
-
-
-class Command(commands.Command, Extension):
+    Borrowing falcon you should implement:
+    - on_get for GET requests
+    - on_post for POST request
+    etc...
+    """
     pass
 
 
-class AppletCommandMixin(Command):
+class _APIEndpointMixin:
+    def _run_main(self, **params):
+        try:
+            return (
+                falcon.HTTP_200,
+                {'result': self.main(**params)}
+            )
+
+        except SyntaxError:
+            raise
+
+        except Exception as e:
+            return falcon.HTTP_500, {'error': str(e) }
+
+    def on_get(self, req, resp):
+        resp.status, resp.context['result'] = self._run_main()
+
+    def on_post(self, req, resp):
+        params = req.context['doc']
+        resp.status, resp.context['result'] = self._run_main(**params)
+
+
+class _CommandMixin:
     def _applet_setup_argparser(self, applet, parser):
         # Add subparsers for children
         if applet.children:
@@ -147,7 +124,11 @@ class AppletCommandMixin(Command):
             fn(**param.kwargs)
 
     def _applet_execute(self, applet, core, arguments):
-        child = arguments.child
+        try:
+            child = arguments.child
+        except AttributeError:
+            return
+
         if child and child in applet.children:
             return self._applet_execute(applet.children[child], core,
                                         arguments)
@@ -168,39 +149,52 @@ class AppletCommandMixin(Command):
         return self._applet_execute(self, core, arguments)
 
 
-class Task(cron.Task, Extension):
-    pass
+class Applet(_APIEndpointMixin, APIEndpoint, _CommandMixin, Command):
+    HELP = ""
+    CHILDREN = ()
+    PARAMETERS = ()
+
+    def __init__(self, services, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.srvs = services
+        self.children = {}
+        self._parent = None
+
+        for (name, child_cls) in self.CHILDREN:
+            self.children[name] = self.create_child(name, child_cls, services, *args, **kwargs)
+
+    def create_child(self, name, child_cls, *args, **kwargs):
+        child = child_cls(*args, **kwargs)
+        child._parent = self
+        return child
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def root(self):
+        root = self.parent
+        if not root:
+            return self
+
+        while root.parent:
+            root = root.parent
+
+        return root
+
+    def main(self, **parameters):
+        raise NotImplementedError()
 
 
-class AppletTaskMixin(Task):
-    def execute(self, core):
-        self.main()
+# class Callable(Extension):
+#     @abc.abstractmethod
+#     def call(self, *args, **kwargs):
+#         raise NotImplementedError()
 
-
-class APIEndpoint(Extension):
-    # Must implement on_HTTP_METHOD
-    pass
-
-
-class AppletAPIEndpointMixin(APIEndpoint):
-    def _run_main(self, **params):
-        try:
-            return (
-                falcon.HTTP_200,
-                {'result': self.main(**params)}
-            )
-
-        except SyntaxError:
-            raise
-
-        except Exception as e:
-            return falcon.HTTP_500, {'error': str(e) }
-
-    def on_get(self, req, resp):
-        resp.status, resp.context['result'] = self._run_main()
-
-    def on_post(self, req, resp):
-        resp.status, resp.context['result'] = self._run_main(req.params)
+#     @abc.abstractmethod
+#     def stringify(self, *args, **kwargs):
+#         raise NotImplementedError()
 
 
 class CronManager(cron.Manager):
@@ -246,10 +240,6 @@ class CronManager(cron.Manager):
             store.set(k, v)
 
         self.save_state(store)
-
-
-class CronCommand(cron.Command, Command):
-    pass
 
 
 class YAMLStore(store.Store):
