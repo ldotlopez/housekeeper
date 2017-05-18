@@ -34,9 +34,8 @@ class MusicPlay(pluginlib.Applet):
     )
 
     def main(self, **kwargs):
-        print(repr(self.root.srvs))
         # Call /usr/bin/media-player play 'what'
-        print(repr(kwargs))
+        return {v: k for (k, v) in kwargs.items()}
 
     def validator(self, **kwargs):
         # Validate kwargs
@@ -78,15 +77,10 @@ class Music(pluginlib.Applet):
         return 'Hi! (foo={})'.format(foo)
 
 
-class MusicAPI(pluginlib.AppletAPIEndpointMixin, Music):
-    __extension_name__ = 'music'
-
-
-class MusicCommand(pluginlib.AppletCommandMixin, Music):
+class MusicApplet(Music):
     __extension_name__ = 'music'
 
 
 __housekeeper_extensions__ = [
-    MusicAPI,
-    MusicCommand,
+    MusicApplet
 ]

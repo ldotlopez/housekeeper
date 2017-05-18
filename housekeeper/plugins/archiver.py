@@ -1,4 +1,7 @@
-from housekeeper import pluginlib
+from housekeeper import (
+    kit,
+    pluginlib
+)
 from housekeeper.lib import hkfilesystem, hkdatetime
 
 
@@ -41,36 +44,50 @@ def is_archivable_filter(dirpath, dirnames, filenames):
         filenames.remove(x)
 
 
-class ArchiveCommand(pluginlib.Command):
+class ArchiveCommand(pluginlib.Applet):
     __extension_name__ = 'archive'
     HELP = 'Archive stuff'
-    ARGUMENTS = (
-        pluginlib.argument(
-            '-f', '--from',
-            dest='src',
-            required=True
-        ),
-        pluginlib.argument(
-            '-t', '--to',
-            dest='dst',
-            required=False
-        ),
-        pluginlib.argument(
-            '-d', '--delta',
-            required=True
-        ),
-        pluginlib.argument(
-            '-n', '--dry-run',
-            action='store_true',
-            required=False
-        )
-    )
 
-    def execute(self, app, arguments):
-        archive(source=arguments.src,
-                destination=arguments.dst,
-                delta=arguments.delta,
-                dry_run=arguments.dry_run)
+    PARAMETERS = (
+        pluginlib.Parameter('from', abbr='f', required=True),
+        pluginlib.Parameter('to', abbr='t', required=False),
+        pluginlib.Parameter('delta', abbr='d', required=True),
+        pluginlib.Parameter('dry-run', abbr='n', action='store_true', required=False)
+    )
+    # PARAMETERS = (
+    #     pluginlib.argument(
+    #         '-f', '--from',
+    #         dest='src',
+    #         required=True
+    #     ),
+    #     pluginlib.argument(
+    #         '-t', '--to',
+    #         dest='dst',
+    #         required=False
+    #     ),
+    #     pluginlib.argument(
+    #         '-d', '--delta',
+    #         required=True
+    #     ),
+    #     pluginlib.argument(
+    #         '-n', '--dry-run',
+    #         action='store_true',
+    #         required=False
+    #     )
+    # )
+
+    # def execute(self, app, arguments):
+    #     archive(source=arguments.src,
+    #             destination=arguments.dst,
+    #             delta=arguments.delta,
+    #             dry_run=arguments.dry_run)
+
+    def main(self, source, delta, destination=None, dry_run=False):
+        return archive(
+            source=source,
+            destination=destination,
+            delta=delta,
+            dry_run=True)
 
 
 class CronTask(pluginlib.Task):
