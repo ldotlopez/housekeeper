@@ -31,7 +31,6 @@ from appkit import (
     utils
 )
 from appkit.application import (
-    commands,
     services
 )
 
