@@ -33,7 +33,7 @@ class MusicPlay(pluginlib.Applet):
         pluginlib.Parameter('type', abbr='t', type=str)
     )
 
-    def main(self, **kwargs):
+    def main(self, what, type):
         return self.root.appbridge.play()
 
     def validator(self, **kwargs):
