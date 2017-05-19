@@ -21,7 +21,7 @@
 from housekeeper.kit import (
     AppBridge,
     Applet,
-    MusicAppBridge,
+    MusicBridge,
     Parameter,
     Task
 )
@@ -30,7 +30,7 @@ from housekeeper.kit import (
 __all__ = [
     'AppBridge',
     'Applet',
-    'MusicAppBridge',
+    'MusicBridge',
     'Parameter',
     'Task',
 ]

@@ -86,7 +86,7 @@ class AppBridge(application.Extension):
     pass
 
 
-class MusicAppBridge(AppBridge):
+class MusicBridge(AppBridge):
     @abc.abstractmethod
     def play(self, what=None):
         raise NotImplementedError()

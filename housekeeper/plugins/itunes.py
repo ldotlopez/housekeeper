@@ -24,7 +24,7 @@ from housekeeper import pluginlib
 import subprocess
 
 
-class ItunesBridge(pluginlib.MusicAppBridge):
+class ItunesBridge(pluginlib.MusicBridge):
     __extension_name__ = 'itunes'
 
     def _osascript(self, s):
