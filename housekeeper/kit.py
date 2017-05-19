@@ -158,6 +158,11 @@ class _CommandMixin:
             except AttributeError:
                 pass
 
+        try:
+            parameters = applet.validator(**parameters)
+        except NotImplementedError:
+            pass
+
         return applet.main(**parameters)
 
     def setup_argparser(self, parser):
@@ -205,7 +210,12 @@ class Applet(_APIEndpointMixin, APIEndpoint, _CommandMixin, Command):
 
         return root
 
+    @abc.abstractmethod
     def main(self, **parameters):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def validator(self, **parameters):
         raise NotImplementedError()
 
 
