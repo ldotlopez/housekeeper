@@ -170,10 +170,15 @@ class _CommandMixin:
 
     def execute(self, core, arguments):
         ret = self._applet_execute(self, core, arguments)
-        if isinstance(ret, str):
+
+        if ret is None:
+            pass
+
+        elif isinstance(ret, str):
             print(ret)
+
         else:
-            print(repr(str))
+            print(repr(ret))
 
 
 class Applet(_APIEndpointMixin, APIEndpoint, _CommandMixin, Command):
@@ -188,7 +193,8 @@ class Applet(_APIEndpointMixin, APIEndpoint, _CommandMixin, Command):
         self._parent = None
 
         for (name, child_cls) in self.CHILDREN:
-            self.children[name] = self.create_child(name, child_cls, services, *args, **kwargs)
+            self.children[name] = self.create_child(name, child_cls, services,
+                                                    *args, **kwargs)
 
     def create_child(self, name, child_cls, *args, **kwargs):
         child = child_cls(*args, **kwargs)
