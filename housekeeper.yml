@@ -1,3 +1,30 @@
+plugin:
+  httpapi:
+    enabled: True
+
+  itunes:
+    enabled: False
+
+  music:
+    enabled: False
+    bridge:
+
+# archive:
+#   - source: "~/Sync/WhatsApp Media"
+#     destination: "~/Sync/WhatsApp Media (Archive)"
+#     delta: 4w
+#     dry_run: False
+
+
+# radiocastellonpodcast:
+# - output: ./storage/podcasts/radiocastellon.xml
+#   audio-url: http://cuarentaydos.com/_/podcasts/audio/
+#   data-dir: ./storage/podcasts/audio/
+#   programs:
+#     - 'A quien corresponda'
+#     - 'Hoy por hoy Castellón'
+#     - 'La tertulia de Radio Castellón'
+
 # Proposal for "tasklets" or user defined crontask
 #
 # tasks:
@@ -10,11 +37,3 @@
 # cron:
 #   - task: archive whatsapp
 #     frequency: 1d
-
-
-# archive plugin config example
-# archive:
-#   - source: "~/Sync/WhatsApp Media"
-#     destination: "~/Sync/WhatsApp Media (Archive)"
-#     delta: 4w
-#     dry_run: False

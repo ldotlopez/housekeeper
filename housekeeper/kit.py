@@ -18,6 +18,7 @@
 # USA.
 
 
+import abc
 import copy
 import functools
 import os
@@ -69,7 +70,6 @@ class Parameter:
         return '--' + self.name.replace('_', '-')
 
 
-
 class APIEndpoint(application.Extension):
     """
     Expose API functionality.
@@ -80,6 +80,24 @@ class APIEndpoint(application.Extension):
     etc...
     """
     pass
+
+
+class AppBridge(application.Extension):
+    pass
+
+
+class MusicAppBridge(AppBridge):
+    @abc.abstractmethod
+    def play(self, what=None):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def stop(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def pause(self):
+        raise NotImplementedError()
 
 
 class _APIEndpointMixin:
@@ -94,7 +112,7 @@ class _APIEndpointMixin:
             raise
 
         except Exception as e:
-            return falcon.HTTP_500, {'error': str(e) }
+            return falcon.HTTP_500, {'error': str(e)}
 
     def on_get(self, req, resp):
         resp.status, resp.context['result'] = self._run_main()
@@ -146,7 +164,11 @@ class _CommandMixin:
         self._applet_setup_argparser(self, parser)
 
     def execute(self, core, arguments):
-        return self._applet_execute(self, core, arguments)
+        ret = self._applet_execute(self, core, arguments)
+        if isinstance(ret, str):
+            print(ret)
+        else:
+            print(repr(str))
 
 
 class Applet(_APIEndpointMixin, APIEndpoint, _CommandMixin, Command):

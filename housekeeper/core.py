@@ -44,7 +44,11 @@ def user_path(*args, **kwargs):
     return utils.user_path(*args, **kwargs)
 
 
-CoreServices = collections.namedtuple('CoreServices', ['settings', 'logger'])
+CoreServices = collections.namedtuple('CoreServices', [
+    'extension_manager',
+    'logger',
+    'settings',
+])
 
 
 class Core(services.ApplicationMixin,
@@ -61,6 +65,7 @@ class Core(services.ApplicationMixin,
             self,
             state_file=user_path(utils.UserPathType.DATA, 'state.json'))
 
+        self.register_extension_point(kit.AppBridge)
         self.register_extension_point(kit.APIEndpoint)
         self.register_extension_class(kit.CronCommand)
 
@@ -101,6 +106,15 @@ class Core(services.ApplicationMixin,
         self.cache = cache.DiskCache(
             basedir=user_path(utils.UserPathType.CACHE))
 
+        # Load plugins
+        for plugin in app_args.plugins:
+            self.load_plugin(plugin)
+
+        for plugin in self.settings.get('plugin', {}):
+            key = 'plugin.{}.enabled'.format(plugin)
+            if self.settings.get(key, False):
+                self.load_plugin(plugin)
+
     def get_extension(self, extension_point, name, *args, **kwargs):
         msg = "Calling extension «{}.{}::{}» (args={}, kwargs={})"
         msg = msg.format(
@@ -114,8 +128,10 @@ class Core(services.ApplicationMixin,
         cls = self._get_extension_class(extension_point, name)
         if issubclass(cls, kit.Applet):
             services = CoreServices(
+                extension_manager=self,
+                logger=self.logger.getChild(extension_point.__name__ + '::' +
+                                            name),
                 settings=self.settings,
-                logger=self.logger.getChild(extension_point.__name__ + '::' + name)
             )
             args = (services,) + tuple(args)
 

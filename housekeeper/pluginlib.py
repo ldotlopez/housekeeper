@@ -19,14 +19,18 @@
 
 
 from housekeeper.kit import (
+    AppBridge,
     Applet,
+    MusicAppBridge,
     Parameter,
     Task
 )
 
 
 __all__ = [
+    'AppBridge',
     'Applet',
+    'MusicAppBridge',
     'Parameter',
     'Task',
 ]
