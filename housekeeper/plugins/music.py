@@ -29,13 +29,12 @@ class MusicPlay(pluginlib.Applet):
     type: Specify `what` type (optional)
     """
     PARAMETERS = (
-        pluginlib.Parameter('what', type=str, required=True),
+        pluginlib.Parameter('what', type=str, required=False),
         pluginlib.Parameter('type', abbr='t', type=str)
     )
 
     def main(self, **kwargs):
-        # Call /usr/bin/media-player play 'what'
-        return {v: k for (k, v) in kwargs.items()}
+        return self.root.appbridge.play()
 
     def validator(self, **kwargs):
         # Validate kwargs
@@ -44,17 +43,16 @@ class MusicPlay(pluginlib.Applet):
 
 class MusicStop(pluginlib.Applet):
     def main(self, **kwargs):
-        # Call /usr/bin/media-player stop
-        pass
+        return self.root.appbridge.stop()
 
 
 class MusicPause(pluginlib.Applet):
     def main(self, **kwargs):
-        # Call /usr/bin/media-player stop
-        pass
+        return self.root.appbridge.pause()
 
 
 class Music(pluginlib.Applet):
+    SETTINGS_NS = 'plugin.music.'
     HELP = 'Music control'
     PARAMETERS = (
         pluginlib.Parameter('foo', required=False),
@@ -71,7 +69,9 @@ class Music(pluginlib.Applet):
         # appbridge_settings = services.settings.get('music')
         # self.appbridge = MusicAppBridge(**appbridge_settings)
         super().__init__(*args, **kwargs)
-        self.appbridge = object()
+        bridge = self.srvs.settings.get(self.SETTINGS_NS + 'bridge')
+        self.appbridge = self.srvs.extension_manager.get_extension(
+            pluginlib.AppBridge, bridge)
 
     def main(self, foo=None):
         return 'Hi! (foo={})'.format(foo)
