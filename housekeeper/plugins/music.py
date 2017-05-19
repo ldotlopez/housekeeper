@@ -34,7 +34,16 @@ class MusicPlay(pluginlib.Applet):
     )
 
     def main(self, what, type):
-        return self.root.appbridge.play()
+
+        if what is None:
+            return self.root.appbridge.play()
+
+        results = self.root.appbridge.search(what)
+        if not results:
+            raise ValueError()
+
+        selection = results[0]
+        self.root.appbridge.play(selection['id'], type=selection['type'])
 
     def validator(self, **kwargs):
         # Validate kwargs
@@ -51,6 +60,20 @@ class MusicPause(pluginlib.Applet):
         return self.root.appbridge.pause()
 
 
+class MusicSearch(pluginlib.Applet):
+    PARAMETERS = (
+        pluginlib.Parameter('query', required=False),
+    )
+
+    def main(self, query=None):
+        ret = []
+
+        playlists = self.root.appbridge.query(query)
+        ret.extend([('playlist', x[0], x[1]) for x in playlists])
+
+        return ret
+
+
 class Music(pluginlib.Applet):
     SETTINGS_NS = 'plugin.music.'
     HELP = 'Music control'
@@ -62,6 +85,7 @@ class Music(pluginlib.Applet):
         ('play', MusicPlay),
         ('pause', MusicPause),
         ('stop', MusicStop),
+        ('search', MusicSearch),
     )
 
     def __init__(self, *args, **kwargs):
