@@ -36,9 +36,17 @@ class MusicPlay(pluginlib.Applet):
     def main(self, what, type):
         return self.root.appbridge.play()
 
-    def validator(self, **kwargs):
-        # Validate kwargs
-        return kwargs
+    def validator(self, what=None, type=None):
+        if what:
+            what = str(what) or None
+
+        if type:
+            type = str(type) or None
+
+        return {
+            'what': what,
+            'type': type
+        }
 
 
 class MusicStop(pluginlib.Applet):
