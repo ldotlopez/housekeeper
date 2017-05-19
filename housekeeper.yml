@@ -5,6 +5,9 @@ plugin:
   itunes:
     enabled: False
 
+  mockbridges:
+    enabled: False
+
   music:
     enabled: False
     bridge:
