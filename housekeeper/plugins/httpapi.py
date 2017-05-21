@@ -120,10 +120,12 @@ class APIServerCommand(kit.Command):
     def execute(self, app, arguments):
         options = {
             'bind': '127.0.0.1:8000',
-            'workers': (multiprocessing.cpu_count() * 2) + 1,
+            'graceful_timeout': 0,
+            'loglevel': 'debug',
             'proc_name': 'housekeeper-api',
             'reload': True,
-            'loglevel': 'debug'
+            'timeout': 0,
+            'workers': 1,  # (multiprocessing.cpu_count() * 2) + 1,
         }
         server = HttpServer(APIServer(app), options)
         server.run()

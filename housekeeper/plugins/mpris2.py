@@ -21,7 +21,7 @@
 from housekeeper import pluginlib
 
 
-from difflib import SequenceMatcher
+import contextlib
 
 
 import dbus
@@ -31,73 +31,130 @@ class MprisMusicBridge(pluginlib.MusicBridge):
     __extension_name__ = 'mpris'
     IMPL = None
 
-    def __init__(self, *args, **kwargs):
+    @contextlib.contextmanager
+    def mpris_interface(self, interface):
         if self.IMPL is None:
             msg = "Implementation name not defined"
             raise TypeError(msg)
 
-        super().__init__(*args, **kwargs)
+        name = 'org.mpris.MediaPlayer2.{impl}'.format(impl=self.IMPL)
         bus = dbus.SessionBus()
+        obj = bus.get_object(name, '/org/mpris/MediaPlayer2')
+        yield dbus.Interface(obj, dbus_interface='org.mpris.MediaPlayer2.' + interface)
 
-        for name in bus.list_names():
-            if name == 'org.mpris.MediaPlayer2.' + self.IMPL:
-                break
-        else:
-            msg = "player not found"
-            raise ValueError(msg)
+    @contextlib.contextmanager
+    def player_iface(self):
+        with self.mpris_interface('Player') as player:
+            yield player
 
-        player_obj = bus.get_object(name, '/org/mpris/MediaPlayer2')
-        self.player = dbus.Interface(player_obj, dbus_interface='org.mpris.MediaPlayer2.Player')
-        self.playlists = dbus.Interface(player_obj, dbus_interface='org.mpris.MediaPlayer2.Playlists')
+    @contextlib.contextmanager
+    def playlists_iface(self):
+        with self.mpris_interface('Playlists') as player:
+            yield player
 
-    def play(self, what=None, type=None):
-        if what is None:
-            self.player.Play()
+    def play(self, item=None):
+        if item is None:
+            with self.player_iface() as player:
+                player.Play()
             return
 
-        if type != 'playlist':
-            raise NotImplementedError()
-
-        self.playlists.ActivatePlaylist(dbus.String(what))
+        with self.playlists_iface() as playlists:
+            playlists.ActivatePlaylist(dbus.String(item.id))
 
     def pause(self):
-        self.player.Pause()
+        with self.player_iface() as player:
+            player.Pause()
 
     def stop(self):
-        self.player.Stop()
+        with self.player_iface() as player:
+            player.Stop()
 
     def search(self, query):
-        def distance(a, b):
-            return SequenceMatcher(None, a, b).ratio()
+        with self.playlists_iface() as playlists:
+            ret = playlists.GetPlaylists(
+                    dbus.UInt32(0), dbus.UInt32(100), dbus.String(''),
+                    dbus.Boolean(False))
 
-        ret = []
+        ret = [pluginlib.MusicBridge.Result(
+                    id=str(path),
+                    name=str(name)) for (path, name, dummy) in ret]
 
-        playlists = self.get_playlists()
-        for path, name in playlists:
-            dist = distance(name, query)
-            if dist < 0.3:
-                continue
+        return ret
 
-            ret.append({
-                'q': dist,
-                'id': str(path),
-                'type': 'playlist',
-                'name':str(name)
-            })
 
-        return list(sorted(ret, key=lambda x: x['q'], reverse=True))
-
-    def get_playlists(self):
-        playlists = self.playlists.GetPlaylists(
-            dbus.UInt32(0), dbus.UInt32(100), dbus.String(''),
-            dbus.Boolean(False))
-
-        return [(x[0], x[1]) for x in playlists]
+import os
+import sqlite3
 
 
 class BansheeMusicBridge(MprisMusicBridge):
     __extension_name__ = 'banshee'
     IMPL = 'banshee'
+
+    @contextlib.contextmanager
+    def db_conn(self):
+        yield sqlite3.connect(os.path.expanduser('~/.config/banshee-1/banshee.db'))
+
+    @contextlib.contextmanager
+    def queue_iface(self):
+        bus = dbus.SessionBus()
+        obj = bus.get_object(
+            'org.bansheeproject.Banshee',
+            '/org/bansheeproject/Banshee/SourceManager/PlayQueue')
+        yield dbus.Interface(
+            obj,
+            dbus_interface='org.bansheeproject.Banshee.PlayQueue')
+
+    def play(self, item=None):
+        if item is None:
+            return super().play()
+
+        type, id = item.id.split(':')
+        if type == 'playlist':
+            item = pluginlib.MusicBridge.Result(id=id, name=item.name)
+            super().play(item)
+
+        rowname = {
+            'artist': 'ArtistID',
+            'album': 'AlbumId'
+        }[type]
+
+        with self.db_conn() as conn:
+            res = conn.execute('select Uri from CoreTracks where {}={}'.format(rowname, id))
+        tracks = [x[0] for x in res]
+
+        with self.queue_iface() as queue:
+            queue.Clear()  # Clear also stops
+            for track in tracks:
+                queue.EnqueueUri(dbus.String(track), dbus.Boolean(False))
+
+        with self.mpris_interface('Player') as player:
+            player.Stop()
+            player.Play()
+
+    def search(self, query):
+        ret = [
+            pluginlib.MusicBridge.Result(
+                id='playlist:{}'.format(x.id),
+                name=x.name)
+            for x in super().search(query)
+        ]
+
+        with self.db_conn() as conn:
+            res1 = conn.execute(
+                'SELECT ArtistID,Name,"artist" from CoreArtists WHERE Name NOT NULL'
+            ).fetchall()
+            res2 = conn.execute(
+                'SELECT AlbumID,Title,"album" from CoreAlbums WHERE Title NOT NULL'
+            ).fetchall()
+
+        ret.extend([
+            pluginlib.MusicBridge.Result(
+                id='{}:{}'.format(type, id),
+                name=str(name))
+            for (id, name, type) in res1 + res2
+        ])
+
+        return ret
 
 
 __housekeeper_extensions__ = [

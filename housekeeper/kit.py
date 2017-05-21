@@ -19,6 +19,7 @@
 
 
 import abc
+import collections
 import copy
 import functools
 import os
@@ -87,8 +88,10 @@ class AppBridge(application.Extension):
 
 
 class MusicBridge(AppBridge):
+    Result = collections.namedtuple('Result', ['id', 'name'])
+
     @abc.abstractmethod
-    def play(self, what=None):
+    def play(self, item=None):
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -99,20 +102,29 @@ class MusicBridge(AppBridge):
     def pause(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def search(self, query):
+        return NotImplementedError
+
 
 class _APIEndpointMixin:
     def _run_main(self, **params):
-        try:
-            return (
-                falcon.HTTP_200,
-                {'result': self.main(**params)}
-            )
+        return (
+            falcon.HTTP_200,
+            {'result': self.main(**params)}
+        )
 
-        except SyntaxError:
-            raise
+        # try:
+        #     return (
+        #         falcon.HTTP_200,
+        #         {'result': self.main(**params)}
+        #     )
 
-        except Exception as e:
-            return falcon.HTTP_500, {'error': str(e)}
+        # except SyntaxError:
+        #     raise
+
+        # except Exception as e:
+        #     return falcon.HTTP_500, {'error': str(e)}
 
     def on_get(self, req, resp):
         resp.status, resp.context['result'] = self._run_main()

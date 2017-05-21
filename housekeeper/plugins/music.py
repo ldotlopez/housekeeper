@@ -21,20 +21,26 @@
 from housekeeper import pluginlib
 
 
+import difflib
+
+
 class MusicPlay(pluginlib.Applet):
     """
-    /music/play
-
     what: What to play (some playlist, artist, album, etc...)
-    type: Specify `what` type (optional)
     """
+
     PARAMETERS = (
         pluginlib.Parameter('what', type=str, required=False),
-        pluginlib.Parameter('type', abbr='t', type=str)
     )
 
-    def main(self, what, type):
+    def main(self, what):
+        if what:
+            lc_what = what.lower()
 
+        def distance(x):
+            return difflib.SequenceMatcher(None, lc_what, x.lower()).ratio()
+
+        # Just play
         if what is None:
             return self.root.appbridge.play()
 
@@ -42,12 +48,15 @@ class MusicPlay(pluginlib.Applet):
         if not results:
             raise ValueError()
 
-        selection = results[0]
-        self.root.appbridge.play(selection['id'], type=selection['type'])
+        results = list(sorted(results, key=lambda x: distance(x.name), reverse=True))
+        self.root.appbridge.play(results[0])
 
     def validator(self, **kwargs):
-        # Validate kwargs
-        return kwargs
+        params = {
+            'what': kwargs.get('what', None) or None
+        }
+
+        return params
 
 
 class MusicStop(pluginlib.Applet):
@@ -58,20 +67,6 @@ class MusicStop(pluginlib.Applet):
 class MusicPause(pluginlib.Applet):
     def main(self, **kwargs):
         return self.root.appbridge.pause()
-
-
-class MusicSearch(pluginlib.Applet):
-    PARAMETERS = (
-        pluginlib.Parameter('query', required=False),
-    )
-
-    def main(self, query=None):
-        ret = []
-
-        playlists = self.root.appbridge.query(query)
-        ret.extend([('playlist', x[0], x[1]) for x in playlists])
-
-        return ret
 
 
 class Music(pluginlib.Applet):
@@ -85,14 +80,11 @@ class Music(pluginlib.Applet):
         ('play', MusicPlay),
         ('pause', MusicPause),
         ('stop', MusicStop),
-        ('search', MusicSearch),
     )
 
     def __init__(self, *args, **kwargs):
-        # Link to music player
-        # appbridge_settings = services.settings.get('music')
-        # self.appbridge = MusicAppBridge(**appbridge_settings)
         super().__init__(*args, **kwargs)
+
         bridge = self.srvs.settings.get(self.SETTINGS_NS + 'bridge')
         self.appbridge = self.srvs.extension_manager.get_extension(
             pluginlib.AppBridge, bridge)
