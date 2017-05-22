@@ -22,6 +22,8 @@ from housekeeper import pluginlib
 
 
 import contextlib
+import os
+import sqlite3
 
 
 import dbus
@@ -30,6 +32,9 @@ import dbus
 class MprisMusicBridge(pluginlib.MusicBridge):
     __extension_name__ = 'mpris'
     IMPL = None
+    DBUS_MPRIS_NAME_TMPL = 'org.mpris.MediaPlayer2.{impl}'
+    DBUS_MPRIS_PATH = '/org/mpris/MediaPlayer2'
+    DBUS_MPRIS_INTERFACE_TMPL = 'org.mpris.MediaPlayer2.{interface}'
 
     @contextlib.contextmanager
     def mpris_interface(self, interface):
@@ -37,10 +42,14 @@ class MprisMusicBridge(pluginlib.MusicBridge):
             msg = "Implementation name not defined"
             raise TypeError(msg)
 
-        name = 'org.mpris.MediaPlayer2.{impl}'.format(impl=self.IMPL)
+        name = self.DBUS_MPRIS_NAME_TMPL.format(impl=self.IMPL)
+        interface = self.DBUS_MPRIS_INTERFACE_TMPL.format(
+            interface=interface)
+
         bus = dbus.SessionBus()
-        obj = bus.get_object(name, '/org/mpris/MediaPlayer2')
-        yield dbus.Interface(obj, dbus_interface='org.mpris.MediaPlayer2.' + interface)
+        obj = bus.get_object(name, self.DBUS_MPRIS_PATH)
+
+        yield dbus.Interface(obj, dbus_interface=interface)
 
     @contextlib.contextmanager
     def player_iface(self):
@@ -82,27 +91,23 @@ class MprisMusicBridge(pluginlib.MusicBridge):
         return ret
 
 
-import os
-import sqlite3
-
-
 class BansheeMusicBridge(MprisMusicBridge):
     __extension_name__ = 'banshee'
     IMPL = 'banshee'
+    DB_PATH = os.path.expanduser('~/.config/banshee-1/banshee.db')
+    DBUS_QUEUE_NAME = 'org.bansheeproject.Banshee'
+    DBUS_QUEUE_PATH = '/org/bansheeproject/Banshee/SourceManager/PlayQueue'
+    DBUS_QUEUE_INTERFACE = 'org.bansheeproject.Banshee.PlayQueue'
 
     @contextlib.contextmanager
     def db_conn(self):
-        yield sqlite3.connect(os.path.expanduser('~/.config/banshee-1/banshee.db'))
+        yield sqlite3.connect(self.DB_PATH)
 
     @contextlib.contextmanager
     def queue_iface(self):
         bus = dbus.SessionBus()
-        obj = bus.get_object(
-            'org.bansheeproject.Banshee',
-            '/org/bansheeproject/Banshee/SourceManager/PlayQueue')
-        yield dbus.Interface(
-            obj,
-            dbus_interface='org.bansheeproject.Banshee.PlayQueue')
+        obj = bus.get_object(self.DBUS_QUEUE_NAME, self.DBUS_QUEUE_PATH)
+        yield dbus.Interface(obj, dbus_interface=self.DBUS_QUEUE_INTERFACE)
 
     def play(self, item=None):
         if item is None:
@@ -119,7 +124,9 @@ class BansheeMusicBridge(MprisMusicBridge):
         }[type]
 
         with self.db_conn() as conn:
-            res = conn.execute('select Uri from CoreTracks where {}={}'.format(rowname, id))
+            res = conn.execute(
+                'select Uri from CoreTracks where {}={}'.format(rowname, id)
+            )
         tracks = [x[0] for x in res]
 
         with self.queue_iface() as queue:
@@ -141,10 +148,12 @@ class BansheeMusicBridge(MprisMusicBridge):
 
         with self.db_conn() as conn:
             res1 = conn.execute(
-                'SELECT ArtistID,Name,"artist" from CoreArtists WHERE Name NOT NULL'
+                'SELECT ArtistID,Name,"artist" from CoreArtists '
+                'WHERE Name NOT NULL'
             ).fetchall()
             res2 = conn.execute(
-                'SELECT AlbumID,Title,"album" from CoreAlbums WHERE Title NOT NULL'
+                'SELECT AlbumID,Title,"album" from CoreAlbums '
+                'WHERE Title NOT NULL'
             ).fetchall()
 
         ret.extend([
