@@ -78,27 +78,23 @@ class RequireJSON(object):
                     href='http://docs.examples.com/api/json')
 
 
-class APIServer(falcon.API):
-    def __init__(self, app, *args, **kwargs):
-        middleware = [RequireJSON(), JSONTranslator()]
-        super().__init__(*args, middleware=middleware, **kwargs)
-
-        for (name, ext) in app.get_extensions_for(kit.APIEndpoint):
-            self.add_extension(name, ext)
-
-    def add_extension(self, name, ext):
-        path = '/' + name + '/'
-        self.add_route(path, ext)
-        print("+ {} {}".format(path, ext))
-
-        for (name_, child) in ext.children.items():
-            self.add_extension(name + '/' + name_, child)
-
-
 class MainResource:
     def on_get(self, req, resp):
         resp.status = falcon.HTTP_303
         resp.location = '/static/index.html'
+
+
+class IntrospectionResource:
+    def __init__(self, reg, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reg = reg
+
+    def on_get(self, req, resp):
+        resp.context['result'] = {
+            name: repr(ext)
+            for (name, ext)
+            in self.reg.items()
+        }
 
 
 class StaticSink:
@@ -111,20 +107,17 @@ class StaticSink:
 
     def on_get(self, req, resp):
         filename = req.path
-
         if not filename.startswith(self.prefix):
             resp.status = falcon.HTTP_404
             return
 
-        fullpath = self.root + filename
-        fullpath = path.realpath(fullpath)
+        fullpath = path.realpath(self.root + filename)
         if not fullpath.startswith(self.root):
             resp.status = falcon.HTTP_404
             return
 
-        mime = self.mime.guess_type(fullpath)[0] or 'application/octet-stream'
-
         try:
+            mime = self.mime.guess_type(fullpath)[0] or 'application/octet-stream'
             resp.status = falcon.HTTP_200
             resp.content_type = mime
             with open(fullpath, 'r') as f:
@@ -134,7 +127,29 @@ class StaticSink:
             resp.status = falcon.HTTP_404
 
 
-class HttpServer(gunicorn.app.base.BaseApplication):
+class APIServer(falcon.API):
+    def __init__(self, core, *args, **kwargs):
+        middleware = [RequireJSON(), JSONTranslator()]
+        super().__init__(*args, middleware=middleware, **kwargs)
+
+        self.registry = {}
+
+        for (name, ext) in core.get_extensions_for(kit.APIEndpoint):
+            self.setup_extension(name, ext)
+
+        self.add_route('/_/', IntrospectionResource(self.registry))
+
+    def setup_extension(self, name, ext):
+        path = '/' + name + '/'
+        self.add_route(path, ext)
+        self.registry[name] = ext
+        print("+ {} {}".format(path, ext))
+
+        for (name_, child) in ext.children.items():
+            self.setup_extension(name + '/' + name_, child)
+
+
+class UnicornApp(gunicorn.app.base.BaseApplication):
     def __init__(self, app, options=None):
         self.options = options or {}
         self.application = app
@@ -171,7 +186,7 @@ class APIServerCommand(kit.Command):
             'timeout': 0,
             'workers': 1,  # (multiprocessing.cpu_count() * 2) + 1,
         }
-        server = HttpServer(APIServer(app), options)
+        server = UnicornApp(APIServer(app), options)
         server.run()
 
 
