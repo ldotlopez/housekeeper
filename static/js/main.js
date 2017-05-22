@@ -3,17 +3,12 @@
 class HK {
     constructor(mainEl) {
         this.main = mainEl;
-
-        var test = document.createElement('p')
-        test.innerText = 'foo';
-
-        this.main.appendChild(test);
         this.loadApplets();
         this.registry = {};
     }
 
     register(name, cls) {
-        this.registry[cls.NAME] = cls;
+        this.registry[name] = cls;
     }
 
     loadApplets() {
@@ -32,18 +27,35 @@ class HK {
             });
     }
 
-    installApplet(applet) {
-        var div = document.createElement('div');
+    installApplet(appletName) {
+/*        var div = document.createElement('div');
         div.innerHTML = (
             '<div class="applet-title">' + applet + '</div>' +
             '<div class="applet-content">' + 'Hi!' + '</div>'
         );
+*/
         var script = document.createElement('script')
         script.onload = (event) => {
-            new this.registry[applet](div);
-            this.main.appendChild(div);
+            var card = new Card(appletName);
+
+            new this.registry[appletName](card);
+            var cardDiv = document.createElement('div');
+            cardDiv.appendChild(card.title);
+            cardDiv.appendChild(card.content);
+            this.main.appendChild(cardDiv);
         };
-        script.src = '/static/js/applets/' + applet + '.js';
+        script.src = '/static/js/applets/' + appletName + '.js';
         document.querySelector('body').appendChild(script);
+    }
+}
+
+class Card {
+    constructor(name) {
+        this.title = document.createElement('div');
+        this.content = document.createElement('div');
+
+        this.title.innerText = name;
+        this.title.classList.add('applet-title');
+        this.content.classList.add('applet-content');
     }
 }

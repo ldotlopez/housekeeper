@@ -2,7 +2,7 @@
 
 class MusicApplet {
 	constructor(card) {
-		card.innerHTML = 'pedo';
+		card.content.innerHTML = 'pedo';
 	}
 }
 
