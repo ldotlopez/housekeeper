@@ -95,14 +95,27 @@ class APIServer(falcon.API):
             self.add_extension(name + '/' + name_, child)
 
 
-class StaticResource:
-    def __init__(self, *args, **kwargs):
+class MainResource:
+    def on_get(self, req, resp):
+        resp.status = falcon.HTTP_303
+        resp.location = '/static/index.html'
+
+
+class StaticSink:
+    def __init__(self, *args, prefix='/', **kwargs):
         super().__init__(*args, **kwargs)
         self.root = path.dirname(sys.modules['housekeeper'].__file__)
-        self.root = path.dirname(self.root) + '/static/'
+        self.root = path.dirname(self.root)
+        self.prefix = prefix
         self.mime = mimetypes.MimeTypes()
 
-    def on_get(self, req, resp, filename):
+    def on_get(self, req, resp):
+        filename = req.path
+
+        if not filename.startswith(self.prefix):
+            resp.status = falcon.HTTP_404
+            return
+
         fullpath = self.root + filename
         fullpath = path.realpath(fullpath)
         if not fullpath.startswith(self.root):
@@ -125,7 +138,10 @@ class HttpServer(gunicorn.app.base.BaseApplication):
     def __init__(self, app, options=None):
         self.options = options or {}
         self.application = app
-        app.add_route('/static/{filename}', StaticResource())
+        sink = StaticSink().on_get
+
+        app.add_route('/', MainResource())
+        app.add_sink(sink, prefix='/static/')
         super().__init__()
 
     def load_config(self):
