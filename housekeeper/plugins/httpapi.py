@@ -18,13 +18,14 @@
 # USA.
 
 
-from housekeeper import (
-    kit,
-    pluginlib
-)
+from housekeeper import kit
+
 
 import json
+import mimetypes
 import multiprocessing
+import sys
+from os import path
 
 
 import falcon
@@ -94,10 +95,37 @@ class APIServer(falcon.API):
             self.add_extension(name + '/' + name_, child)
 
 
+class StaticResource:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.root = path.dirname(sys.modules['housekeeper'].__file__)
+        self.root = path.dirname(self.root) + '/static/'
+        self.mime = mimetypes.MimeTypes()
+
+    def on_get(self, req, resp, filename):
+        fullpath = self.root + filename
+        fullpath = path.realpath(fullpath)
+        if not fullpath.startswith(self.root):
+            resp.status = falcon.HTTP_404
+            return
+
+        mime = self.mime.guess_type(fullpath)[0] or 'application/octet-stream'
+
+        try:
+            resp.status = falcon.HTTP_200
+            resp.content_type = mime
+            with open(fullpath, 'r') as f:
+                resp.body = f.read()
+
+        except IOError:
+            resp.status = falcon.HTTP_404
+
+
 class HttpServer(gunicorn.app.base.BaseApplication):
     def __init__(self, app, options=None):
         self.options = options or {}
         self.application = app
+        app.add_route('/static/{filename}', StaticResource())
         super().__init__()
 
     def load_config(self):
