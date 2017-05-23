@@ -31,18 +31,18 @@ import dbus
 
 class MprisMusicBridge(pluginlib.MusicBridge):
     __extension_name__ = 'mpris'
-    IMPL = None
+    MPRIS_IMPL = None
     DBUS_MPRIS_NAME_TMPL = 'org.mpris.MediaPlayer2.{impl}'
     DBUS_MPRIS_PATH = '/org/mpris/MediaPlayer2'
     DBUS_MPRIS_INTERFACE_TMPL = 'org.mpris.MediaPlayer2.{interface}'
 
     @contextlib.contextmanager
     def mpris_interface(self, interface):
-        if self.IMPL is None:
+        if self.MPRIS_IMPL is None:
             msg = "Implementation name not defined"
             raise TypeError(msg)
 
-        name = self.DBUS_MPRIS_NAME_TMPL.format(impl=self.IMPL)
+        name = self.DBUS_MPRIS_NAME_TMPL.format(impl=self.MPRIS_IMPL)
         interface = self.DBUS_MPRIS_INTERFACE_TMPL.format(
             interface=interface)
 
@@ -93,7 +93,7 @@ class MprisMusicBridge(pluginlib.MusicBridge):
 
 class BansheeMusicBridge(MprisMusicBridge):
     __extension_name__ = 'banshee'
-    IMPL = 'banshee'
+    MPRIS_IMPL = 'banshee'
     DB_PATH = os.path.expanduser('~/.config/banshee-1/banshee.db')
     DBUS_QUEUE_NAME = 'org.bansheeproject.Banshee'
     DBUS_QUEUE_PATH = '/org/bansheeproject/Banshee/SourceManager/PlayQueue'
@@ -166,6 +166,12 @@ class BansheeMusicBridge(MprisMusicBridge):
         return ret
 
 
+class ClementineMusicBridge(MprisMusicBridge):
+    __extension_name__ = 'clementine'
+    MPRIS_IMPL = 'clementine'
+
+
 __housekeeper_extensions__ = [
-    BansheeMusicBridge
+    BansheeMusicBridge,
+    ClementineMusicBridge
 ]
