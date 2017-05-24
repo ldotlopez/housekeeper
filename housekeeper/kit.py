@@ -20,10 +20,7 @@
 
 import abc
 import collections
-import copy
-import functools
 import os
-import re
 
 
 import falcon
@@ -39,37 +36,14 @@ from appkit.application import (
 )
 
 
+Parameter = application.Parameter
+
+
 Command = commands.Command
 CommandManager = commands.Manager
 
 Task = cron.Task
 CronCommand = cron.Command
-
-
-class Parameter:
-    def __init__(self, name, abbr=None, **kwargs):
-        if not re.match(r'^[a-z0-9-_]+$', name, re.IGNORECASE):
-            raise ValueError(name)
-
-        if abbr and len(abbr) != 1:
-            msg = "abbr must be a single letter"
-            raise ValueError(abbr, msg)
-
-        self.name = str(name).replace('-', '_')
-        self.abbr = str(abbr) if abbr else None
-        self.kwargs = copy.copy(kwargs)
-
-    @property
-    def short_flag(self):
-        if not self.abbr:
-            return None
-
-        return '-' + self.abbr
-
-    @property
-    def long_flag(self):
-        return '--' + self.name.replace('_', '-')
-
 
 class APIEndpoint(application.Extension):
     """
@@ -135,24 +109,6 @@ class _APIEndpointMixin:
 
 
 class _CommandMixin:
-    def _applet_setup_argparser(self, applet, parser):
-        # Add subparsers for children
-        if applet.children:
-            chidren_parsers = parser.add_subparsers(dest='child')
-
-            for (name, child) in applet.children.items():
-                child_parser = chidren_parsers.add_parser(name)
-                self._applet_setup_argparser(child, child_parser)
-
-        for param in applet.PARAMETERS:
-            fn = parser.add_argument
-
-            if param.short_flag:
-                fn = functools.partial(fn, param.short_flag)
-
-            fn = functools.partial(fn, param.long_flag)
-            fn(**param.kwargs)
-
     def _applet_execute(self, applet, core, arguments):
         try:
             child = arguments.child
@@ -178,7 +134,13 @@ class _CommandMixin:
         return applet.main(**parameters)
 
     def setup_argparser(self, parser):
-        self._applet_setup_argparser(self, parser)
+        if self.children:
+            chidren_parsers = parser.add_subparsers(dest='child')
+            for (name, child) in self.children.items():
+                child_parser = chidren_parsers.add_parser(name)
+                child.setup_argparser(child_parser)
+
+        super().setup_argparser(parser)
 
     def execute(self, core, arguments):
         ret = self._applet_execute(self, core, arguments)
