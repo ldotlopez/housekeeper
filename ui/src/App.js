@@ -29,16 +29,29 @@ class Music extends Applet {
   }
 
   onPlayClicked(proxy, e) {
-    fetch('http://localhost:8000/music/play')
+    fetch('http://localhost:8000/music/play', {
+      method: 'POST',
+      body: JSON.stringify({}),
+      headers: new Headers({
+        'Content-Type': 'application/json'
+      })
+    })
     .then((resp) => { return resp.json()})
     .then((data) => {});
   }
 
   onStopClicked(proxy, e) {
-    fetch('http://localhost:8000/music/stop')
+    fetch('http://localhost:8000/music/stop', {
+      method: 'POST',
+      body: JSON.stringify({}),
+      headers: new Headers({
+        'Content-Type': 'application/json'
+      })
+    })
     .then((resp) => { return resp.json()})
     .then((data) => {});
   }
+
 
 }
 appletRegistry['music'] = Music;
@@ -56,8 +69,8 @@ class App extends Component {
     return (
       <div className="App">
         <div className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h2>Welcome to Housekeeper</h2>
+{/*          <!-- <img src={logo} className="App-logo" alt="logo" /> -->
+*/}          <h2>Welcome to Housekeeper</h2>
         </div>
         <p className="App-intro">
           To get started, edit <code>src/App.js</code> and save to reload.

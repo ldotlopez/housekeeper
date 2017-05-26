@@ -160,8 +160,12 @@ class Core(services.ApplicationMixin, application.BaseApplication):
 
 class APIServer(falcon.API):
     def __init__(self, core, *args, static_folder=None, **kwargs):
-        cors = falcon_cors.CORS(allow_all_origins=True)
-        middleware = [cors.middleware, RequireJSON(), JSONTranslator()]
+        cors = falcon_cors.CORS(
+            allow_all_origins=True,
+            allow_all_headers=True,
+            allow_all_methods=True
+        )
+        middleware = [cors.middleware, RequireJSON(), JSONTranslator()]   # , cors.middleware]
         super().__init__(*args, middleware=middleware, **kwargs)
 
         self.registry = {}
