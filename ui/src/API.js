@@ -23,7 +23,7 @@ class API {
                 resolve(data.result)
             )
             .catch((e) => {
-                console.log('Error:', e)
+                reject(e)
             });
         });
     }
@@ -52,7 +52,7 @@ class API {
                 resolve(data.result)
             )
             .catch((e) => {
-                console.log('Error:', e)
+                reject(e)
             });
         });
     }
