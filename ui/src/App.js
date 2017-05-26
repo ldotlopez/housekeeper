@@ -1,10 +1,18 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
+/*import logo from './logo.svg';*/
 import './App.css';
+import API from './API';
 
 var appletRegistry = {};
 
 class Applet extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      api: new API('http://localhost:8000/')
+    };
+  }
+
   render() {
     return (
       <div className={this.props.name}>
@@ -21,35 +29,21 @@ class Music extends Applet {
       <Applet name='music' content={
         <div>
           <input type="text"></input>
-          <button onClick={this.onPlayClicked}>Play</button>
-          <button onClick={this.onStopClicked}>Stop</button>
+          <button onClick={this.onPlayClicked.bind(this)}>Play</button>
+          <button onClick={this.onStopClicked.bind(this)}>Stop</button>
         </div>
       } />
     );
   }
 
   onPlayClicked(proxy, e) {
-    fetch('http://localhost:8000/music/play', {
-      method: 'POST',
-      body: JSON.stringify({}),
-      headers: new Headers({
-        'Content-Type': 'application/json'
-      })
-    })
-    .then((resp) => { return resp.json()})
-    .then((data) => {});
+    this.state.api.post('music/play')
+    .then((resp) => {});
   }
 
   onStopClicked(proxy, e) {
-    fetch('http://localhost:8000/music/stop', {
-      method: 'POST',
-      body: JSON.stringify({}),
-      headers: new Headers({
-        'Content-Type': 'application/json'
-      })
-    })
-    .then((resp) => { return resp.json()})
-    .then((data) => {});
+    this.state.api.post('music/stop')
+    .then((resp) => {});
   }
 
 
