@@ -1,7 +1,4 @@
-from housekeeper import (
-    kit,
-    pluginlib
-)
+from housekeeper import pluginlib
 from housekeeper.lib import hkfilesystem, hkdatetime
 
 
@@ -25,7 +22,7 @@ def archive(source, delta, destination=None, dry_run=False):
     if dry_run:
         for (op, *args) in ret:
             if op == hkfilesystem.Operations.MOVE:
-                print("mv '{}' '{}'".format(*args))
+                print("mv -b '{}' '{}'".format(*args))
 
             elif op == hkfilesystem.Operations.UNLINK:
                 print("rm '{}'".format(*args))
@@ -49,38 +46,11 @@ class ArchiveCommand(pluginlib.Applet):
     HELP = 'Archive stuff'
 
     PARAMETERS = (
-        pluginlib.Parameter('from', abbr='f', required=True),
-        pluginlib.Parameter('to', abbr='t', required=False),
+        pluginlib.Parameter('source', abbr='f', required=True),
+        pluginlib.Parameter('destination', abbr='t', required=False),
         pluginlib.Parameter('delta', abbr='d', required=True),
         pluginlib.Parameter('dry-run', abbr='n', action='store_true', required=False)
     )
-    # PARAMETERS = (
-    #     pluginlib.argument(
-    #         '-f', '--from',
-    #         dest='src',
-    #         required=True
-    #     ),
-    #     pluginlib.argument(
-    #         '-t', '--to',
-    #         dest='dst',
-    #         required=False
-    #     ),
-    #     pluginlib.argument(
-    #         '-d', '--delta',
-    #         required=True
-    #     ),
-    #     pluginlib.argument(
-    #         '-n', '--dry-run',
-    #         action='store_true',
-    #         required=False
-    #     )
-    # )
-
-    # def execute(self, app, arguments):
-    #     archive(source=arguments.src,
-    #             destination=arguments.dst,
-    #             delta=arguments.delta,
-    #             dry_run=arguments.dry_run)
 
     def main(self, source, delta, destination=None, dry_run=False):
         return archive(

@@ -137,7 +137,7 @@ class _CommandMixin:
         try:
             child = arguments.child
         except AttributeError:
-            return
+            child = []
 
         if child and child in applet.children:
             return self.execute_applet(applet.children[child], core,
