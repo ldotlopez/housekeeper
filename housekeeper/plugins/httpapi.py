@@ -22,8 +22,7 @@ from housekeeper import core
 from housekeeper import kit
 
 
-# import multiprocessing
-from os import path
+import multiprocessing
 
 
 import gunicorn.app.base
@@ -48,19 +47,37 @@ class StandaloneApplication(gunicorn.app.base.BaseApplication):
 class APIServerCommand(kit.Command):
     __extension_name__ = 'httpapi'
     HELP = 'Start HTTP API server'
+    PARAMETERS = (
+        kit.Parameter('bind', default='127.0.0.1:8000'),
+        kit.Parameter('static-folder', default=None),
+        kit.Parameter('reload', default=False, action='store_true'),
+        kit.Parameter('workers', default=None)
+    )
 
     def execute(self, hk_app, arguments):
+        bind = arguments.bind
+        reload = bool(arguments.reload)
+        static_folder = arguments.static_folder
+        if arguments.workers:
+            workers = int(arguments.workers)
+        else:
+            workers = (multiprocessing.cpu_count() * 2) + 1
+
         options = {
-            'bind': '127.0.0.1:8000',
+            'bind': bind,
             'graceful_timeout': 0,
             'loglevel': 'debug',
             'proc_name': 'housekeeper-api',
-            'reload': True,
+            'reload': reload,
             'timeout': 0,
-            'workers': 1,  # (multiprocessing.cpu_count() * 2) + 1,
+            'workers': workers
         }
 
-        server = StandaloneApplication(core.APIServer(hk_app), options)
+        api_server = core.APIServer(
+            hk_app,
+            static_folder=static_folder
+        )
+        server = StandaloneApplication(api_server, options)
         server.run()
 
 

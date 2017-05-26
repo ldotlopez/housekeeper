@@ -83,6 +83,11 @@ class MusicBridge(AppBridge):
 
 class _APIEndpointMixin:
     def _run_main(self, **params):
+        try:
+            params = self.validator(**params)
+        except NotImplementedError:
+            pass
+
         return (
             falcon.HTTP_200,
             {'result': self.main(**params)}

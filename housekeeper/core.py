@@ -29,6 +29,7 @@ import logging
 import json
 import mimetypes
 import os
+import re
 import sys
 
 
@@ -157,7 +158,7 @@ class Core(services.ApplicationMixin, application.BaseApplication):
 
 
 class APIServer(falcon.API):
-    def __init__(self, core, *args, **kwargs):
+    def __init__(self, core, *args, static_folder=None, **kwargs):
         middleware = [RequireJSON(), JSONTranslator()]
         super().__init__(*args, middleware=middleware, **kwargs)
 
@@ -169,8 +170,9 @@ class APIServer(falcon.API):
         self.add_route('/', MainResource())
         self.add_route('/_/', IntrospectionResource(self.registry))
 
-        sink = StaticSink().on_get
-        self.add_sink(sink, prefix='/static/')
+        if static_folder:
+            sink = StaticSink(static_folder, prefix='/static').on_get
+            self.add_sink(sink, prefix='/static/')
 
     def setup_extension(self, name, ext):
         path = '/' + name + '/'
@@ -200,12 +202,14 @@ class IntrospectionResource:
             in self.reg.items()
         }
 
-
 class StaticSink:
-    def __init__(self, *args, prefix='/', **kwargs):
+    def __init__(self, root, *args, prefix='/', **kwargs):
         super().__init__(*args, **kwargs)
-        self.root = path.dirname(sys.modules['housekeeper'].__file__)
-        self.root = path.dirname(self.root)
+
+        root = re.subn(r'/*$', '', root)[0]
+        prefix = re.subn(r'/*$', '', prefix)[0]
+
+        self.root = path.realpath(root)
         self.prefix = prefix
         self.mime = mimetypes.MimeTypes()
 
@@ -215,7 +219,10 @@ class StaticSink:
             resp.status = falcon.HTTP_404
             return
 
-        fullpath = path.realpath(self.root + filename)
+        filename = filename[len(self.prefix):]
+        fullpath = '{}/{}'.format(self.root, filename)
+        fullpath = path.realpath(fullpath)
+
         if not fullpath.startswith(self.root):
             resp.status = falcon.HTTP_404
             return
@@ -224,7 +231,7 @@ class StaticSink:
             mime = self.mime.guess_type(fullpath)[0] or 'application/octet-stream'
             resp.status = falcon.HTTP_200
             resp.content_type = mime
-            with open(fullpath, 'r') as f:
+            with open(fullpath, 'rb') as f:
                 resp.body = f.read()
 
         except IOError:
