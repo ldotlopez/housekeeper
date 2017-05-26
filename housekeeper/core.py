@@ -34,6 +34,7 @@ import sys
 
 
 import falcon
+import falcon_cors
 from appkit import (
     application,
     cache,
@@ -159,7 +160,8 @@ class Core(services.ApplicationMixin, application.BaseApplication):
 
 class APIServer(falcon.API):
     def __init__(self, core, *args, static_folder=None, **kwargs):
-        middleware = [RequireJSON(), JSONTranslator()]
+        cors = falcon_cors.CORS(allow_all_origins=True)
+        middleware = [cors.middleware, RequireJSON(), JSONTranslator()]
         super().__init__(*args, middleware=middleware, **kwargs)
 
         self.registry = {}
@@ -216,7 +218,7 @@ class StaticSink:
     def on_get(self, req, resp):
         filename = req.path
         if not filename.startswith(self.prefix):
-            resp.status = falcon.HTTP_404
+            resp.status = falcon.HTTP_NOT_FOUND
             return
 
         filename = filename[len(self.prefix):]
@@ -224,18 +226,18 @@ class StaticSink:
         fullpath = path.realpath(fullpath)
 
         if not fullpath.startswith(self.root):
-            resp.status = falcon.HTTP_404
+            resp.status = falcon.HTTP_NOT_FOUND
             return
 
         try:
             mime = self.mime.guess_type(fullpath)[0] or 'application/octet-stream'
-            resp.status = falcon.HTTP_200
+            resp.status = falcon.HTTP_OK
             resp.content_type = mime
             with open(fullpath, 'rb') as f:
                 resp.body = f.read()
 
         except IOError:
-            resp.status = falcon.HTTP_404
+            resp.status = falcon.HTTP_NOT_FOUND
 
 
 class JSONTranslator(object):

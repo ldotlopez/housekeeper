@@ -82,34 +82,49 @@ class MusicBridge(AppBridge):
 
 
 class _APIEndpointMixin:
+    METHODS = ['GET']
+
     def _run_main(self, **params):
         try:
             params = self.validator(**params)
         except NotImplementedError:
             pass
 
-        return (
-            falcon.HTTP_200,
-            {'result': self.main(**params)}
-        )
+        try:
+            return (
+                falcon.HTTP_200,
+                {
+                    'result': self.main(**params)
+                }
+            )
 
-        # try:
-        #     return (
-        #         falcon.HTTP_200,
-        #         {'result': self.main(**params)}
-        #     )
+        except RuntimeError as e:
+            return (
+                falcon.HTTP_500,
+                {
+                    'error': e.args[0]
+                }
+            )
 
-        # except SyntaxError:
-        #     raise
-
-        # except Exception as e:
-        #     return falcon.HTTP_500, {'error': str(e)}
 
     def on_get(self, req, resp):
+        if 'GET' not in self.METHODS:
+            resp.status = falcon.HTTP_METHOD_NOT_ALLOWED
+            return
+
         resp.status, resp.context['result'] = self._run_main()
 
     def on_post(self, req, resp):
-        params = req.context['doc']
+        if 'POST' not in self.METHODS:
+            resp.status = falcon.HTTP_METHOD_NOT_ALLOWED
+            return
+
+        try:
+            params = req.context['doc']
+        except KeyError:
+            resp.status = falcon.HTTP_NOT_ACCEPTABLE
+            return
+
         resp.status, resp.context['result'] = self._run_main(**params)
 
 
@@ -277,3 +292,7 @@ class YAMLStore(store.Store):
         data = store.flatten_dict(data or {})
         for (k, v) in data.items():
             self.set(k, v)
+
+
+class RuntimeError(Exception):
+    pass

@@ -23,7 +23,8 @@ from housekeeper.kit import (
     Applet,
     MusicBridge,
     Parameter,
-    Task
+    Task,
+    RuntimeError,
 )
 
 
@@ -33,4 +34,5 @@ __all__ = [
     'MusicBridge',
     'Parameter',
     'Task',
+    'RuntimeError'
 ]

@@ -25,13 +25,10 @@ import difflib
 
 
 class MusicPlay(pluginlib.Applet):
-    """
-    what: What to play (some playlist, artist, album, etc...)
-    """
-
     PARAMETERS = (
         pluginlib.Parameter('what', type=str, required=False),
     )
+    METHODS = ['POST']
 
     def main(self, what):
         if what:
@@ -60,11 +57,15 @@ class MusicPlay(pluginlib.Applet):
 
 
 class MusicStop(pluginlib.Applet):
+    METHODS = ['POST']
+
     def main(self, **kwargs):
         return self.root.appbridge.stop()
 
 
 class MusicPause(pluginlib.Applet):
+    METHODS = ['POST']
+
     def main(self, **kwargs):
         return self.root.appbridge.pause()
 
@@ -81,6 +82,8 @@ class Music(pluginlib.Applet):
         ('pause', MusicPause),
         ('stop', MusicStop),
     )
+
+    METHODS = ['GET']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

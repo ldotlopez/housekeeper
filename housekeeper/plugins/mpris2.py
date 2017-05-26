@@ -47,9 +47,15 @@ class MprisMusicBridge(pluginlib.MusicBridge):
             interface=interface)
 
         bus = dbus.SessionBus()
-        obj = bus.get_object(name, self.DBUS_MPRIS_PATH)
+        try:
+            obj = bus.get_object(name, self.DBUS_MPRIS_PATH)
+        except dbus.exceptions.DBusException as e:
+            msg = '{msg}'
+            msg = msg.format(msg=e.args[0])
+            raise pluginlib.RuntimeError(msg) from e
 
-        yield dbus.Interface(obj, dbus_interface=interface)
+        iface = dbus.Interface(obj, dbus_interface=interface)
+        yield iface
 
     @contextlib.contextmanager
     def player_iface(self):
