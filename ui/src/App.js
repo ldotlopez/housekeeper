@@ -1,18 +1,10 @@
 import React, { Component } from 'react';
-/*import logo from './logo.svg';*/
 import './App.css';
 import API from './API';
 
 var appletRegistry = {};
 
 class Applet extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      api: new API('http://localhost:8000/')
-    };
-  }
-
   render() {
     return (
       <div className={this.props.name}>
@@ -24,11 +16,26 @@ class Applet extends Component {
 }
 
 class Music extends Applet {
+  constructor(props) {
+    super(props);
+    this.state = {
+      musicData: {}
+    }
+  }
+
   render () {
     return (
       <Applet name='music' content={
         <div>
-          <input type="text"></input>
+          <ul>
+          {
+            Object.keys(this.state.musicData).map((k) => {
+              var v = this.state.musicData[k];
+              return <li key={k}>{k}: {v}</li>
+            })
+          }
+          </ul>
+          <input ref="query" type="text"></input>
           <button onClick={this.onPlayClicked.bind(this)}>Play</button>
           <button onClick={this.onStopClicked.bind(this)}>Stop</button>
         </div>
@@ -36,13 +43,30 @@ class Music extends Applet {
     );
   }
 
+  componentDidMount() {
+    this.props.api.get('music')
+    .then((data) => {
+      this.setState((prev, props) => {
+        return {
+          musicData: data
+        }
+      })
+    });
+  }
+
   onPlayClicked(proxy, e) {
-    this.state.api.post('music/play')
+    var query = this.refs.query.value;
+    var params = {}
+    if (query) {
+      params['query'] = query;
+    }
+
+    this.props.api.post('music/play', params)
     .then((resp) => {});
   }
 
   onStopClicked(proxy, e) {
-    this.state.api.post('music/stop')
+    this.props.api.post('music/stop')
     .then((resp) => {});
   }
 
@@ -55,7 +79,8 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      cards: []
+      cards: [],
+      api: new API('http://localhost:8000/')
     };
   }
 
@@ -63,17 +88,17 @@ class App extends Component {
     return (
       <div className="App">
         <div className="App-header">
-{/*          <!-- <img src={logo} className="App-logo" alt="logo" /> -->
-*/}          <h2>Welcome to Housekeeper</h2>
+          <h2>Welcome to Housekeeper</h2>
         </div>
         <p className="App-intro">
           To get started, edit <code>src/App.js</code> and save to reload.
         </p>
         <div className="Container">
         {
-          this.state.cards.map(function(x) {
+          this.state.cards
+          .map((x) => {
             var type = appletRegistry[x];
-            return React.createElement(type, {key: x});
+            return React.createElement(type, {key: x, api: this.state.api});
           })
         }
         </div>
@@ -91,12 +116,19 @@ class App extends Component {
         return resp.json()
     })
     .then((data) => {
-        var cardNames = Object.keys(data);
-        cardNames = cardNames.filter(function(x) {
+        var cardNames = Object.keys(data)
+        .filter((x) => {
             return x.indexOf('/') === -1;
-        });
+        })
+        .filter((x) => {
+            return x in appletRegistry;
+        })
+
         this.setState((prevState, props) => {
-          return {'cards': cardNames}
+          return {
+            'api': prevState.api,
+            'cards': cardNames
+          }
         });
     });
   }
