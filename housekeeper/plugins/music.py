@@ -26,22 +26,22 @@ import difflib
 
 class MusicPlay(pluginlib.Applet):
     PARAMETERS = (
-        pluginlib.Parameter('what', type=str, required=False),
+        pluginlib.Parameter('query', abbr='q', type=str, required=False),
     )
     METHODS = ['POST']
 
-    def main(self, what):
-        if what:
-            lc_what = what.lower()
+    def main(self, query):
+        if query:
+            lc_what = query.lower()
 
         def distance(x):
             return difflib.SequenceMatcher(None, lc_what, x.lower()).ratio()
 
         # Just play
-        if what is None:
+        if query is None:
             return self.root.appbridge.play()
 
-        results = self.root.appbridge.search(what)
+        results = self.root.appbridge.search(query)
         if not results:
             raise ValueError()
 
@@ -49,11 +49,9 @@ class MusicPlay(pluginlib.Applet):
         self.root.appbridge.play(results[0])
 
     def validator(self, **kwargs):
-        params = {
-            'what': kwargs.get('what', None) or None
+        return {
+            'query': kwargs.get('query', None) or None
         }
-
-        return params
 
 
 class MusicStop(pluginlib.Applet):
@@ -73,9 +71,6 @@ class MusicPause(pluginlib.Applet):
 class Music(pluginlib.Applet):
     SETTINGS_NS = 'plugin.music.'
     HELP = 'Music control'
-    PARAMETERS = (
-        pluginlib.Parameter('foo', required=False),
-    )
 
     CHILDREN = (
         ('play', MusicPlay),
@@ -92,8 +87,19 @@ class Music(pluginlib.Applet):
         self.appbridge = self.srvs.extension_manager.get_extension(
             pluginlib.AppBridge, bridge)
 
-    def main(self, foo=None):
-        return 'Hi! (foo={})'.format(foo)
+    def main(self):
+        return self.appbridge.state
+
+    def execute(self, *args, **kwargs):
+        ret = super().execute(*args, **kwargs)
+        if ret is None:
+            return
+
+        if not isinstance(ret, dict):
+            raise TypeError(ret)
+
+        for (k, v) in ret.items():
+            print("'{}':\t'{}'".format(k, v))
 
 
 class MusicApplet(Music):

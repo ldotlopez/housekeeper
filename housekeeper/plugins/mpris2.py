@@ -23,10 +23,12 @@ from housekeeper import pluginlib
 
 import contextlib
 import os
+import re
 import sqlite3
 
 
 import dbus
+from housekeeper.lib import hkdbus
 
 
 class MprisMusicBridge(pluginlib.MusicBridge):
@@ -46,16 +48,13 @@ class MprisMusicBridge(pluginlib.MusicBridge):
         interface = self.DBUS_MPRIS_INTERFACE_TMPL.format(
             interface=interface)
 
-        bus = dbus.SessionBus()
         try:
-            obj = bus.get_object(name, self.DBUS_MPRIS_PATH)
+            yield hkdbus.HKDbusInterface(name, self.DBUS_MPRIS_PATH, interface)
+
         except dbus.exceptions.DBusException as e:
             msg = '{msg}'
             msg = msg.format(msg=e.args[0])
             raise pluginlib.RuntimeError(msg) from e
-
-        iface = dbus.Interface(obj, dbus_interface=interface)
-        yield iface
 
     @contextlib.contextmanager
     def player_iface(self):
@@ -67,14 +66,31 @@ class MprisMusicBridge(pluginlib.MusicBridge):
         with self.mpris_interface('Playlists') as player:
             yield player
 
+    @property
+    def state(self):
+        with self.player_iface() as player:
+            props = player.Properties.GetAll()
+
+            ret = {}
+            for (k, v)  in props.get('Metadata', {}).items():
+                k = re.subn(r'.+?:', '', k)[0]
+                k = re.subn(
+                    r'([a-z])([A-Z])',
+                    lambda m: m.group(1) + '_' + m.group(2).lower(),
+                    k)[0]
+                ret[k] = v
+
+            ret['state'] = props['PlaybackStatus'].lower()
+            return ret
+
     def play(self, item=None):
         if item is None:
             with self.player_iface() as player:
                 player.Play()
-            return
 
-        with self.playlists_iface() as playlists:
-            playlists.ActivatePlaylist(dbus.String(item.id))
+        else:
+            with self.playlists_iface() as playlists:
+                playlists.ActivatePlaylist(dbus.String(item.id))
 
     def pause(self):
         with self.player_iface() as player:
@@ -111,9 +127,16 @@ class BansheeMusicBridge(MprisMusicBridge):
 
     @contextlib.contextmanager
     def queue_iface(self):
-        bus = dbus.SessionBus()
-        obj = bus.get_object(self.DBUS_QUEUE_NAME, self.DBUS_QUEUE_PATH)
-        yield dbus.Interface(obj, dbus_interface=self.DBUS_QUEUE_INTERFACE)
+        try:
+            yield hkdbus.HKDbusInterface(
+                self.DBUS_QUEUE_NAME,
+                self.DBUS_QUEUE_PATH,
+                self.DBUS_QUEUE_INTERFACE)
+
+        except dbus.exceptions.DBusException as e:
+            msg = '{msg}'
+            msg = msg.format(msg=e.args[0])
+            raise pluginlib.RuntimeError(msg) from e
 
     def play(self, item=None):
         if item is None:

@@ -64,6 +64,10 @@ class AppBridge(application.Extension):
 class MusicBridge(AppBridge):
     Result = collections.namedtuple('Result', ['id', 'name'])
 
+    @abc.abstractproperty
+    def state(self):
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def play(self, item=None):
         raise NotImplementedError()
@@ -129,14 +133,14 @@ class _APIEndpointMixin:
 
 
 class _CommandMixin:
-    def _applet_execute(self, applet, core, arguments):
+    def execute_applet(self, applet, core, arguments):
         try:
             child = arguments.child
         except AttributeError:
             return
 
         if child and child in applet.children:
-            return self._applet_execute(applet.children[child], core,
+            return self.execute_applet(applet.children[child], core,
                                         arguments)
 
         parameters = {}
@@ -163,7 +167,7 @@ class _CommandMixin:
         super().setup_argparser(parser)
 
     def execute(self, core, arguments):
-        ret = self._applet_execute(self, core, arguments)
+        ret = self.execute_applet(self, core, arguments)
 
         if ret is None:
             pass
@@ -174,6 +178,7 @@ class _CommandMixin:
         else:
             print(repr(ret))
 
+        return ret
 
 class Applet(_APIEndpointMixin, APIEndpoint, _CommandMixin, Command):
     HELP = ""
