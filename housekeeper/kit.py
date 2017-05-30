@@ -19,10 +19,8 @@
 
 
 import abc
-import copy
-import functools
+import collections
 import os
-import re
 
 
 import falcon
@@ -38,36 +36,14 @@ from appkit.application import (
 )
 
 
+Parameter = application.Parameter
+
+
 Command = commands.Command
 CommandManager = commands.Manager
 
 Task = cron.Task
 CronCommand = cron.Command
-
-
-class Parameter:
-    def __init__(self, name, abbr=None, **kwargs):
-        if not re.match(r'^[a-z0-9-_]+$', name, re.IGNORECASE):
-            raise ValueError(name)
-
-        if abbr and len(abbr) != 1:
-            msg = "abbr must be a single letter"
-            raise ValueError(abbr, msg)
-
-        self.name = str(name).replace('-', '_')
-        self.abbr = str(abbr) if abbr else None
-        self.kwargs = copy.copy(kwargs)
-
-    @property
-    def short_flag(self):
-        if not self.abbr:
-            return None
-
-        return '-' + self.abbr
-
-    @property
-    def long_flag(self):
-        return '--' + self.name.replace('_', '-')
 
 
 class APIEndpoint(application.Extension):
@@ -87,8 +63,14 @@ class AppBridge(application.Extension):
 
 
 class MusicBridge(AppBridge):
+    Result = collections.namedtuple('Result', ['id', 'name'])
+
+    @abc.abstractproperty
+    def state(self):
+        raise NotImplementedError()
+
     @abc.abstractmethod
-    def play(self, what=None):
+    def play(self, item=None):
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -99,57 +81,67 @@ class MusicBridge(AppBridge):
     def pause(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def search(self, query):
+        return NotImplementedError
+
 
 class _APIEndpointMixin:
+    METHODS = ['GET']
+
     def _run_main(self, **params):
+        try:
+            params = self.validator(**params)
+        except NotImplementedError:
+            pass
+
         try:
             return (
                 falcon.HTTP_200,
-                {'result': self.main(**params)}
+                {
+                    'result': self.main(**params)
+                }
             )
 
-        except SyntaxError:
-            raise
-
-        except Exception as e:
-            return falcon.HTTP_500, {'error': str(e)}
+        except RuntimeError as e:
+            return (
+                falcon.HTTP_500,
+                {
+                    'error': e.args[0]
+                }
+            )
 
     def on_get(self, req, resp):
+        if 'GET' not in self.METHODS:
+            resp.status = falcon.HTTP_METHOD_NOT_ALLOWED
+            return
+
         resp.status, resp.context['result'] = self._run_main()
 
     def on_post(self, req, resp):
-        params = req.context['doc']
+        if 'POST' not in self.METHODS:
+            resp.status = falcon.HTTP_METHOD_NOT_ALLOWED
+            return
+
+        try:
+            params = req.context['doc']
+        except KeyError:
+            resp.status = falcon.HTTP_NOT_ACCEPTABLE
+            return
+
         resp.status, resp.context['result'] = self._run_main(**params)
 
 
 class _CommandMixin:
-    def _applet_setup_argparser(self, applet, parser):
-        # Add subparsers for children
-        if applet.children:
-            chidren_parsers = parser.add_subparsers(dest='child')
-
-            for (name, child) in applet.children.items():
-                child_parser = chidren_parsers.add_parser(name)
-                self._applet_setup_argparser(child, child_parser)
-
-        for param in applet.PARAMETERS:
-            fn = parser.add_argument
-
-            if param.short_flag:
-                fn = functools.partial(fn, param.short_flag)
-
-            fn = functools.partial(fn, param.long_flag)
-            fn(**param.kwargs)
-
-    def _applet_execute(self, applet, core, arguments):
+    def execute_applet(self, applet, core, arguments):
         try:
             child = arguments.child
         except AttributeError:
-            return
+            child = []
 
         if child and child in applet.children:
-            return self._applet_execute(applet.children[child], core,
-                                        arguments)
+            return self.execute_applet(applet.children[child], core,
+                                       arguments)
 
         parameters = {}
         for param in applet.PARAMETERS:
@@ -166,10 +158,16 @@ class _CommandMixin:
         return applet.main(**parameters)
 
     def setup_argparser(self, parser):
-        self._applet_setup_argparser(self, parser)
+        if self.children:
+            chidren_parsers = parser.add_subparsers(dest='child')
+            for (name, child) in self.children.items():
+                child_parser = chidren_parsers.add_parser(name)
+                child.setup_argparser(child_parser)
+
+        super().setup_argparser(parser)
 
     def execute(self, core, arguments):
-        ret = self._applet_execute(self, core, arguments)
+        ret = self.execute_applet(self, core, arguments)
 
         if ret is None:
             pass
@@ -179,6 +177,8 @@ class _CommandMixin:
 
         else:
             print(repr(ret))
+
+        return ret
 
 
 class Applet(_APIEndpointMixin, APIEndpoint, _CommandMixin, Command):
@@ -298,3 +298,7 @@ class YAMLStore(store.Store):
         data = store.flatten_dict(data or {})
         for (k, v) in data.items():
             self.set(k, v)
+
+
+class RuntimeError(Exception):
+    pass

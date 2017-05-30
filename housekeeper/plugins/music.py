@@ -21,40 +21,50 @@
 from housekeeper import pluginlib
 
 
+import difflib
+
+
 class MusicPlay(pluginlib.Applet):
-    """
-    /music/play
-
-    what: What to play (some playlist, artist, album, etc...)
-    type: Specify `what` type (optional)
-    """
     PARAMETERS = (
-        pluginlib.Parameter('what', type=str, required=False),
-        pluginlib.Parameter('type', abbr='t', type=str)
+        pluginlib.Parameter('query', abbr='q', type=str, required=False),
     )
+    METHODS = ['POST']
 
-    def main(self, what, type):
-        return self.root.appbridge.play()
+    def main(self, query):
+        if query:
+            lc_what = query.lower()
 
-    def validator(self, what=None, type=None):
-        if what:
-            what = str(what) or None
+        def distance(x):
+            return difflib.SequenceMatcher(None, lc_what, x.lower()).ratio()
 
-        if type:
-            type = str(type) or None
+        # Just play
+        if query is None:
+            return self.root.appbridge.play()
 
+        results = self.root.appbridge.search(query)
+        if not results:
+            raise ValueError()
+
+        results = list(
+            sorted(results, key=lambda x: distance(x.name), reverse=True))
+        self.root.appbridge.play(results[0])
+
+    def validator(self, **kwargs):
         return {
-            'what': what,
-            'type': type
+            'query': kwargs.get('query', None) or None
         }
 
 
 class MusicStop(pluginlib.Applet):
+    METHODS = ['POST']
+
     def main(self, **kwargs):
         return self.root.appbridge.stop()
 
 
 class MusicPause(pluginlib.Applet):
+    METHODS = ['POST']
+
     def main(self, **kwargs):
         return self.root.appbridge.pause()
 
@@ -62,9 +72,6 @@ class MusicPause(pluginlib.Applet):
 class Music(pluginlib.Applet):
     SETTINGS_NS = 'plugin.music.'
     HELP = 'Music control'
-    PARAMETERS = (
-        pluginlib.Parameter('foo', required=False),
-    )
 
     CHILDREN = (
         ('play', MusicPlay),
@@ -72,17 +79,28 @@ class Music(pluginlib.Applet):
         ('stop', MusicStop),
     )
 
+    METHODS = ['GET']
+
     def __init__(self, *args, **kwargs):
-        # Link to music player
-        # appbridge_settings = services.settings.get('music')
-        # self.appbridge = MusicAppBridge(**appbridge_settings)
         super().__init__(*args, **kwargs)
+
         bridge = self.srvs.settings.get(self.SETTINGS_NS + 'bridge')
         self.appbridge = self.srvs.extension_manager.get_extension(
             pluginlib.AppBridge, bridge)
 
-    def main(self, foo=None):
-        return 'Hi! (foo={})'.format(foo)
+    def main(self):
+        return self.appbridge.state
+
+    def execute(self, *args, **kwargs):
+        ret = super().execute(*args, **kwargs)
+        if ret is None:
+            return
+
+        if not isinstance(ret, dict):
+            raise TypeError(ret)
+
+        for (k, v) in ret.items():
+            print("'{}':\t'{}'".format(k, v))
 
 
 class MusicApplet(Music):
