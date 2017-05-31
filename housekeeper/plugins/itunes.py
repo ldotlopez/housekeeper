@@ -35,14 +35,55 @@ class ItunesBridge(pluginlib.MusicBridge):
         ]
         return subprocess.check_output(cmd)
 
-    def play(self, what=None):
-        return self._osascript("play")
+    def play(self, item=None):
+        # osascript -e 'tell application "iTunes" to play'
+        if not item:
+            self._osascript("play")
+        else:
+            script = """
+            tell application "iTunes"
+                play the playlist named "{item}"
+            end tell
+            """
+            cmd = [
+                "osascript",
+                "-e",
+                script.format(item=item.name)
+            ]
+            subprocess.run(cmd)
 
     def stop(self):
-        return self._osascript("stop")
+        # osascript -e 'tell application "iTunes" to stop'
+        self._osascript("stop")
 
     def pause(self):
-        return self._osascript("pause")
+        # osascript -e 'tell application "iTunes" to pause'
+        self._osascript("pause")
+
+    def search(self, query):
+        script = """
+        tell application "iTunes"
+            repeat with x in (get playlists)
+                set n to (name of x)
+                log n
+            end repeat
+        end tell
+        """
+
+        cmd = [
+            "osascript",
+            "-e",
+            script
+        ]
+
+        ret = []
+        p = subprocess.run(cmd, stderr=subprocess.PIPE)
+        for res in p.stderr.decode('utf-8').strip().split('\n'):
+            ret.append(pluginlib.MusicBridge.Result(
+                id=res, name=res
+            ))
+
+        return ret
 
 
 __housekeeper_extensions__ = [
