@@ -27,63 +27,50 @@ import subprocess
 class ItunesBridge(pluginlib.MusicBridge):
     __extension_name__ = 'itunes'
 
-    def _osascript(self, s):
-        cmd = [
-            "osascript",
-            "-e",
-            "tell application \"iTunes\" to {s}".format(s=s)
-        ]
-        return subprocess.check_output(cmd)
-
     def play(self, item=None):
-        # osascript -e 'tell application "iTunes" to play'
         if not item:
-            self._osascript("play")
+            self.tell('play')
         else:
-            script = """
-            tell application "iTunes"
-                play the playlist named "{item}"
-            end tell
-            """
-            cmd = [
-                "osascript",
-                "-e",
-                script.format(item=item.name)
-            ]
-            subprocess.run(cmd)
+            self.tell('play the playlist named "{item}"'.format(
+                item=item.name))
 
     def stop(self):
-        # osascript -e 'tell application "iTunes" to stop'
-        self._osascript("stop")
+        self.tell('stop')
 
     def pause(self):
-        # osascript -e 'tell application "iTunes" to pause'
-        self._osascript("pause")
+        self.tell('pause')
 
     def search(self, query):
-        script = """
-        tell application "iTunes"
+        pred = """
             repeat with x in (get playlists)
                 set n to (name of x)
                 log n
             end repeat
-        end tell
         """
 
+        p = self.tell(pred, stderr=subprocess.PIPE)
+        lines = p.stderr.decode('utf-8').strip().split('\n')
+        ret = [pluginlib.MusicBridge.Result(id=x, name=x)
+               for x in lines]
+
+        return ret
+
+    def tell(self, predicate, *args, **kwargs):
         cmd = [
             "osascript",
             "-e",
-            script
+            """
+            tell application "iTunes"
+                {predicate}
+            end tell
+            """.format(predicate=predicate)
         ]
+        p = subprocess.run(cmd, *args, **kwargs)
+        if p.returncode != 0:
+            print(repr(cmd))
+            raise ValueError()
 
-        ret = []
-        p = subprocess.run(cmd, stderr=subprocess.PIPE)
-        for res in p.stderr.decode('utf-8').strip().split('\n'):
-            ret.append(pluginlib.MusicBridge.Result(
-                id=res, name=res
-            ))
-
-        return ret
+        return p
 
 
 __housekeeper_extensions__ = [
