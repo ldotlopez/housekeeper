@@ -110,7 +110,6 @@ class _APIEndpointMixin:
                 }
             )
 
-
     def on_get(self, req, resp):
         if 'GET' not in self.METHODS:
             resp.status = falcon.HTTP_METHOD_NOT_ALLOWED
@@ -179,6 +178,7 @@ class _CommandMixin:
             print(repr(ret))
 
         return ret
+
 
 class Applet(_APIEndpointMixin, APIEndpoint, _CommandMixin, Command):
     HELP = ""

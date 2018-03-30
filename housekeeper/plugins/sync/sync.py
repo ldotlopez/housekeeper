@@ -24,7 +24,7 @@ import tempfile
 from os import path
 
 from appkit import utils as kitutils
-from housekeeper import tools
+from housekeeper.lib import hkfilesystem
 
 _registry = {}
 
