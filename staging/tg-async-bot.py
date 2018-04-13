@@ -14,9 +14,18 @@ from os import path
 
 
 import aiotg
+import appkit.utils
 
 
 UNDEF = object()
+
+
+class ArgumentsError(Exception):
+    pass
+
+
+class ConfigurationError(Exception):
+    pass
 
 
 def log(fn):
@@ -111,12 +120,12 @@ class Users:
 
     def get(self, id):
         return self.state.get(
-            ['users', id],
+            'users/{}'.format(id),
             None)
 
     def register(self, user):
         return self.state.set(
-            ['users', user['id']],
+            'users/{}'.format(user['id']),
             user)
 
 
@@ -127,27 +136,6 @@ class HKTelegram(aiotg.Bot):
         self.logger = logging.getLogger()
         self.administrators = administrators or []
         self.users = Users(state)
-
-    # @log
-    # async def _do_start(self, chat, match,):
-    #     user_key = 'user/' + str(chat.sender['id'])
-    #     user_data = {
-    #         'seen': False
-    #     }
-
-    #     user_data = self.state.get(user_key, user_data)
-    #     if not user_data['seen']:
-    #         await chat.send_text("Nice to meet you")
-    #         user_data['seen'] = True
-    #         self.state.set(user_key, user_data)
-
-    #     else:
-    #         await chat.send_text("Nice to see you again")
-
-    # @require('admin')
-    # @log
-    # async def _do_stop(self, chat, match):
-    #     await chat.send_text('OK')
 
     @log
     async def _do_registrations(self, chat, match):
@@ -174,27 +162,64 @@ class HKTelegram(aiotg.Bot):
         super().run()
 
     @log
+    async def send(self, id, message):
+        await self.private(id).send_text(message)
+
+    @log
+    def send_and_stop(self, id, message):
+        async def _wrapper():
+            await self.private(id).send_text(message)
+            self.stop()
+
+        asyncio.get_event_loop().create_task(_wrapper())
+        super().run()
+
+    @log
     def listen(self):
         self.add_command('start', self._do_registrations)
         super().run()
 
 
-def load_profile(cp, profile=None):
-    if profile is None:
-        profile = cp.get('DEFAULTS', 'profile')
+def load_profile(configfile, profile=None):
+    cp = configparser.ConfigParser()
+    cp.read(configfile)
 
-    return profile, {
-        'token': cp.get(profile, 'token'),
-        'administrators': [
-            int(x.strip()) for x in
-            cp.get(profile, 'administrators', fallback='').split(',')]
-    }
+    if profile is None:
+        profile = cp.get('DEFAULTS', 'profile', fallback=None)
+
+    if profile is None:
+        err = "Missing [DEFAULTS]:profile key"
+        raise ConfigurationError(err)
+
+    opts = {}
+    for (opt, fallback) in [
+            ('token', configparser._UNSET),
+            ('administrators', '')]:
+
+        try:
+            opts[opt] = cp.get(profile, opt, fallback=fallback)
+        except KeyError:
+            err = "Missing [{}}:{} key"
+            err = err.format(profile, opt)
+            raise ConfigurationError(err)
+
+    opts['administrators'] = [
+        int(x.strip()) for x in
+        opts['administrators'].split(',')
+    ]
+
+    return profile, opts
 
 
 def main():
     import sys
 
-    configfile = path.expanduser('~/.config/hk-telegram.ini')
+    configfile = appkit.utils.prog_config_file(prog='hk-telegram')
+    statefile = (
+        appkit.utils.user_path(appkit.utils.UserPathType.DATA,
+                               prog="hk-telegram",
+                               create=True) +
+        '/state')
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -206,28 +231,39 @@ def main():
         default=None)
     parser.add_argument(
         '--listen',
-        action='store_true'
-    )
+        action='store_true')
+    parser.add_argument(
+        '--send-to',
+        help='Send message to someone')
     parser.add_argument(
         'message',
         nargs='?')
+
     args = parser.parse_args(sys.argv[1:])
+    if args.listen and args.send_to:
+        errmsg = 'Options --listen and --send-to are mutually exclusive'
+        raise ArgumentsError(errmsg)
 
-    cp = configparser.ConfigParser()
-    cp.read(args.config)
+    if not args.listen and not args.send_to:
+        errmsg = 'One of --listen or --send-to options is required'
+        raise ArgumentsError(errmsg)
 
-    profile, tg_params = load_profile(cp, args.profile)
+    if args.send_to and not args.message:
+        errmsg = 'Missing message'
+        raise ArgumentsError(errmsg)
 
-    statefile = path.expanduser(
-        '~/.local/share/hk-telegram/' + profile + '/state')
-    os.makedirs(path.dirname(statefile), exist_ok=True)
+    profile, tg_params = load_profile(args.config, args.profile)
 
-    tg_params['state'] = State(path=statefile)
+    tg_params['state'] = State(statefile)
+
     bot = HKTelegram(**tg_params)
 
     if args.listen:
         print("Listening for '/start's")
         bot.listen()
+
+    elif args.send_to:
+        sync(bot.send(args.send_to, args.message))
 
 
 if __name__ == '__main__':
