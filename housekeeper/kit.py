@@ -45,6 +45,7 @@ CommandManager = commands.Manager
 Task = cron.Task
 CronCommand = cron.Command
 
+
 class APIEndpoint(application.Extension):
     """
     Expose API functionality.
@@ -140,7 +141,7 @@ class _CommandMixin:
 
         if child and child in applet.children:
             return self.execute_applet(applet.children[child], core,
-                                        arguments)
+                                       arguments)
 
         parameters = {}
         for param in applet.PARAMETERS:

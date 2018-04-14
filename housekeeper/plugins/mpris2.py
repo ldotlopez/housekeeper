@@ -72,7 +72,7 @@ class MprisMusicBridge(pluginlib.MusicBridge):
             props = player.Properties.GetAll()
 
             ret = {}
-            for (k, v)  in props.get('Metadata', {}).items():
+            for (k, v) in props.get('Metadata', {}).items():
                 k = re.subn(r'.+?:', '', k)[0]
                 k = re.subn(
                     r'([a-z])([A-Z])',

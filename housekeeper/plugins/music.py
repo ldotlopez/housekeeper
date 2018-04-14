@@ -45,7 +45,8 @@ class MusicPlay(pluginlib.Applet):
         if not results:
             raise ValueError()
 
-        results = list(sorted(results, key=lambda x: distance(x.name), reverse=True))
+        results = list(
+            sorted(results, key=lambda x: distance(x.name), reverse=True))
         self.root.appbridge.play(results[0])
 
     def validator(self, **kwargs):
