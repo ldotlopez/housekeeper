@@ -31,7 +31,9 @@ class ConfigurationError(Exception):
 def log(fn):
     @functools.wraps(fn)
     def _wrapper(*args, **kwargs):
-        print(fn)
+        if os.environ.get('HK_DEBUG', ''):
+            print(fn)
+
         return fn(*args, **kwargs)
 
     return _wrapper
@@ -105,7 +107,7 @@ class State:
             else:
                 raise
 
-        return json.loads(ret)
+        return json.loads(ret.decode('ascii'))
 
     def delete(self, key):
         key = self._normalize_key(key)
@@ -142,18 +144,24 @@ class HKTelegram(aiotg.Bot):
         user = self.users.get(chat.sender['id'])
 
         if not user:
-            self.users.register(chat.sender)
+            user = chat.sender
+            self.users.register(user)
             text = "Nice to meet you {username}"
             text = text.format(**user)
             chat.send_text(text)
 
             climsg = 'NEW_USER {id}:{username}'
             climsg = climsg.format(**user)
+            print(climsg)
 
         else:
             text = "Nice to see you again {username}"
             text = text.format(**user)
             chat.send_text(text)
+
+            climsg = 'RETUNING_USER {id}:{username}'
+            climsg = climsg.format(**user)
+            print(climsg)
 
     @log
     def run(self):
@@ -167,12 +175,8 @@ class HKTelegram(aiotg.Bot):
 
     @log
     def send_and_stop(self, id, message):
-        async def _wrapper():
-            await self.private(id).send_text(message)
-            self.stop()
-
-        asyncio.get_event_loop().create_task(_wrapper())
-        super().run()
+        sync(self.send(id, message))
+        asyncio.get_event_loop().call_soon(self.stop)
 
     @log
     def listen(self):
@@ -203,8 +207,14 @@ def load_profile(configfile, profile=None):
             err = err.format(profile, opt)
             raise ConfigurationError(err)
 
+    opts['state'] = State(
+        appkit.utils.user_path(appkit.utils.UserPathType.DATA,
+                               prog="hk-telegram",
+                               create=True) +
+        '/' + profile + '-state')
+
     opts['administrators'] = [
-        int(x.strip()) for x in
+        x.strip() for x in
         opts['administrators'].split(',')
     ]
 
@@ -215,11 +225,6 @@ def main():
     import sys
 
     configfile = appkit.utils.prog_config_file(prog='hk-telegram')
-    statefile = (
-        appkit.utils.user_path(appkit.utils.UserPathType.DATA,
-                               prog="hk-telegram",
-                               create=True) +
-        '/state')
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -253,9 +258,6 @@ def main():
         raise ArgumentsError(errmsg)
 
     profile, tg_params = load_profile(args.config, args.profile)
-
-    tg_params['state'] = State(statefile)
-
     bot = HKTelegram(**tg_params)
 
     if args.listen:
@@ -263,7 +265,7 @@ def main():
         bot.listen()
 
     elif args.send_to:
-        sync(bot.send(args.send_to, args.message))
+        bot.send_and_stop(args.send_to, args.message)
 
 
 if __name__ == '__main__':
